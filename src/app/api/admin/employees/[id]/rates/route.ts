@@ -5,10 +5,10 @@ import { isDate, today } from "@/lib/report";
 
 const { users, payRates } = schema;
 
-/** บาท (ทศนิยมได้ 2 ตำแหน่ง) -> สตางค์ */
+/** บาทเต็ม (จำนวนเต็ม) -> สตางค์ */
 const toSatang = (v: unknown) => {
   const n = Number(v);
-  return Number.isFinite(n) && n > 0 && n <= 100_000 ? Math.round(n * 100) : null;
+  return Number.isInteger(n) && n > 0 && n <= 100_000 ? n * 100 : null;
 };
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const b = await body(req);
   const rateSatang = toSatang(b.rate), otRateSatang = toSatang(b.otRate);
   const effectiveFrom = b.effectiveFrom || today();
-  if (rateSatang == null || otRateSatang == null) return err(400, "ค่าแรงต้องเป็นตัวเลขมากกว่า 0");
+  if (rateSatang == null || otRateSatang == null) return err(400, "ค่าแรงต้องเป็นจำนวนเต็มบาท มากกว่า 0");
   if (!isDate(effectiveFrom)) return err(400, "วันที่มีผลไม่ถูกต้อง");
   const d = db();
   if (!(await d.select().from(users).where(and(eq(users.id, id), eq(users.role, "employee")))).length) return err(404, "ไม่พบพนักงาน");

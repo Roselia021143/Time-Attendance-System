@@ -44,7 +44,7 @@ export type Day = {
 export type Totals = { daysWorked: number; regularMin: number; otApprovedMin: number; otPendingMin: number; lateDays: number; lateMin: number; forgotten: number };
 
 export const baht = (satang: number) =>
-  (satang / 100).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ฿";
+  Math.round(satang / 100).toLocaleString("th-TH") + " ฿"; // แสดงบาทเต็ม (ปัดครึ่งขึ้น)
 
 export type Pay = { regularMin: number; otMin: number; regularSatang: number; otSatang: number; otPendingSatang: number; totalSatang: number; missingRateDays: number };
 export type Rate = { id: number; effectiveFrom: string; rateSatang: number; otRateSatang: number };

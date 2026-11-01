@@ -40,8 +40,8 @@ export default function Rates({ userId }: { userId: number }) {
         ))}
       </ul>
       <form onSubmit={submit} className="flex flex-wrap items-end gap-2 text-sm">
-        <label className="flex flex-col">ค่าแรงปกติ (บาท/ชม.)<input className="input w-32" name="rate" type="number" min="0.01" step="0.01" required /></label>
-        <label className="flex flex-col">ค่า OT (บาท/ชม.)<input className="input w-32" name="otRate" type="number" min="0.01" step="0.01" required /></label>
+        <label className="flex flex-col">ค่าแรงปกติ (บาท/ชม.)<input className="input w-32" name="rate" type="number" min="1" step="1" inputMode="numeric" required /></label>
+        <label className="flex flex-col">ค่า OT (บาท/ชม.)<input className="input w-32" name="otRate" type="number" min="1" step="1" inputMode="numeric" required /></label>
         <div><span className="block">มีผลตั้งแต่</span><DateInput name="effectiveFrom" label="มีผลตั้งแต่" /></div>
         <button className="btn"><Save />ตั้งค่าแรง</button>
       </form>

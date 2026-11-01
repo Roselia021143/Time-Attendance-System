@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   for (const r of rows) for (const k of ["regularMin", "otMin", "regularSatang", "otSatang", "otPendingSatang", "totalSatang", "missingRateDays"] as const) total[k] += r[k];
 
   if (q.get("format") !== "csv") return Response.json({ period, from, to, rows, total });
-  const b = (s: number) => (s / 100).toFixed(2), h = (m: number) => (m / 60).toFixed(2);
+  const b = (s: number) => Math.round(s / 100), h = (m: number) => (m / 60).toFixed(2);
   const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
   const csv = [
     ["username", "ชื่อ", "นามสกุล", "ชม.ปกติ", "ค่าแรงปกติ (บาท)", "ชม.OT", "ค่า OT (บาท)", "รวม (บาท)", "OT รออนุมัติ (บาท)", "วันที่ไม่มีอัตราค่าแรง"],
