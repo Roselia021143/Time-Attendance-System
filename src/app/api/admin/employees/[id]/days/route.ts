@@ -3,6 +3,8 @@ import { auth, err, publicUser } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { getDays, today, totals } from "@/lib/report";
 import { periodRange } from "@/lib/time";
+import { activeLeaves } from "@/lib/leave";
+import { leaveDays } from "@/lib/pay";
 
 const { users } = schema;
 
@@ -16,6 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const [emp] = await db().select().from(users).where(and(eq(users.id, id), eq(users.role, "employee")));
   if (!emp) return err(404, "ไม่พบพนักงาน");
   const { from, to } = periodRange("month", `${month}-01`);
-  const days = await getDays([id], from, to);
-  return Response.json({ user: publicUser(emp), month, totals: totals(days), days });
+  const [days, leaves] = await Promise.all([getDays([id], from, to), activeLeaves([id], from, to, ["pending", "approved"])]);
+  const leaveTotal = leaves.filter((l) => l.status === "approved").reduce((n, l) => n + leaveDays(l, from, to), 0);
+  return Response.json({ user: publicUser(emp), month, totals: { ...totals(days), leaveDays: leaveTotal }, days, leaves });
 }

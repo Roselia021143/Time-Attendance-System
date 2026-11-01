@@ -1,6 +1,6 @@
 # Time Attendance System
 
-ระบบลงเวลาเข้า-ออกงานสำหรับร้าน (Phase 1)
+ระบบลงเวลาเข้า-ออกงานสำหรับร้าน — Phase 1 (ลงเวลา, OT, Dashboard) + Phase 2 (ค่าแรง, ระบบลา)
 
 Next.js + Tailwind บน Cloudflare Workers (OpenNext) + D1 — spec อยู่ใน Project: `spec-phase1.md`
 
@@ -12,7 +12,7 @@ npm run db:migrate:local
 # สร้างบัญชีเจ้าของร้าน (PowerShell: $env:OWNER_USERNAME="owner"; $env:OWNER_PASSWORD="รหัสผ่าน"; npm run seed:local)
 OWNER_USERNAME=owner OWNER_PASSWORD=รหัสผ่าน npm run seed:local
 npm run dev          # http://localhost:3000
-npm test             # ทดสอบกฎคำนวณชั่วโมง
+npm test             # ทดสอบกฎคำนวณชั่วโมง ค่าแรง และการลา
 ```
 
 ## Deploy ขึ้น Cloudflare
@@ -34,6 +34,8 @@ npm run deploy
 | `src/lib/time.ts` | กฎคำนวณชั่วโมง/OT/สาย/ลืมออก (เวลาไทย) + test |
 | `src/lib/auth.ts` | PBKDF2, session token (cookie `sid` หรือ `Authorization: Bearer`) |
 | `src/lib/report.ts` | ดึงข้อมูลรายวัน + รวมยอด |
+| `src/lib/pay.ts` | ค่าแรงตามประวัติอัตรา + นับวันลา (pure) + test |
+| `src/lib/leave.ts` | ตรวจคำขอลา, ดึงลา/อัตราจาก DB |
 | `src/app/api/**` | API ทั้งหมด (ใช้ต่อกับแอป Flutter ใน Phase 3 ได้) |
 | `/login` `/clock` `/admin` | หน้าเว็บ |
 
@@ -57,3 +59,10 @@ npm run deploy
 | POST | `/api/admin/sessions` `{userId,date,in,out,reason}` | owner |
 | PATCH/DELETE | `/api/admin/sessions/:id` | owner |
 | GET/PUT | `/api/admin/settings` | owner |
+| GET/POST | `/api/admin/employees/:id/rates` `{rate,otRate,effectiveFrom}` (บาท/ชม.) | owner |
+| DELETE | `/api/admin/employees/:id/rates/:rateId` | owner |
+| GET | `/api/admin/payroll?period=week\|month\|year&offset=0[&format=csv][&userId=]` | owner |
+| GET/POST | `/api/me/leaves` `{type,fromDate,toDate,part,reason}` | login แล้ว |
+| POST | `/api/me/leaves/:id/cancel` (เฉพาะรออนุมัติ) | login แล้ว |
+| GET/POST | `/api/admin/leaves[?status=pending]` (POST = ลงลาแทน อนุมัติทันที) | owner |
+| POST | `/api/admin/leaves/:id/decision` `{action: approve\|reject\|cancel, note}` | owner |

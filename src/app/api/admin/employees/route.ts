@@ -2,15 +2,17 @@ import { eq } from "drizzle-orm";
 import { auth, err, hashPassword, publicUser, body } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { readProfile } from "@/lib/profile";
-import { workingNow } from "@/lib/report";
+import { today, workingNow } from "@/lib/report";
+import { ratesByUser } from "@/lib/leave";
+import { rateOn } from "@/lib/pay";
 
 const { users } = schema;
 export async function GET(req: Request) {
   const u = await auth(req, "owner");
   if (u instanceof Response) return u;
   const list = await db().select().from(users).where(eq(users.role, "employee")).orderBy(users.firstName);
-  const working = await workingNow();
-  return Response.json(list.map((e) => ({ ...publicUser(e), workingSince: working[e.id] ?? null })));
+  const [working, rates] = await Promise.all([workingNow(), ratesByUser(list.map((e) => e.id))]);
+  return Response.json(list.map((e) => ({ ...publicUser(e), workingSince: working[e.id] ?? null, rate: rateOn(rates[e.id] ?? [], today()) ?? null })));
 }
 
 export async function POST(req: Request) {

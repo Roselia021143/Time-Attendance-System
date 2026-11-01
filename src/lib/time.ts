@@ -42,10 +42,16 @@ export function computeDay(rules: Rules, sessions: Sess[], otApprovedMin: number
   };
 }
 
-const addDays = (date: string, n: number) => new Date(Date.parse(date) + n * 86_400_000).toISOString().slice(0, 10);
+export const addDays = (date: string, n: number) => new Date(Date.parse(date) + n * 86_400_000).toISOString().slice(0, 10);
 
-/** ช่วงวันที่ตามปฏิทิน: สัปดาห์เริ่มวันจันทร์ / เดือน, offset = ย้อนหลังกี่ช่วง */
-export function periodRange(period: "week" | "month", today: string, offset = 0) {
+export type Period = "week" | "month" | "year";
+
+/** ช่วงวันที่ตามปฏิทิน: สัปดาห์เริ่มวันจันทร์ / เดือน / ปี, offset = ย้อนหลังกี่ช่วง */
+export function periodRange(period: Period, today: string, offset = 0) {
+  if (period === "year") {
+    const y = Number(today.slice(0, 4)) - offset;
+    return { from: `${y}-01-01`, to: `${y}-12-31` };
+  }
   if (period === "week") {
     const dow = (new Date(today).getUTCDay() + 6) % 7; // จันทร์ = 0
     const from = addDays(today, -dow - 7 * offset);

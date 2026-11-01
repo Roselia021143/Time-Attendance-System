@@ -3,9 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { OtControl } from "@/components/AdminDayActions";
 import TimeInput from "@/components/TimeInput";
-import { api, dateLabel, hrs, logout, monthLabel, shiftMonth, thisMonth, timeOf, type Day, type Profile, type Totals } from "@/lib/client";
+import Payroll from "@/components/Payroll";
+import Rates from "@/components/Rates";
+import { LeaveDecision, LeaveItem } from "@/components/Leave";
+import { api, baht, dateLabel, hrs, LEAVE_TYPE, logout, monthLabel, shiftMonth, thisMonth, timeOf, type Day, type Leave, type Profile, type Rate, type Totals } from "@/lib/client";
 
-const TABS = { today: "วันนี้", summary: "สรุปรายเดือน", pending: "รอดำเนินการ", employees: "พนักงาน", settings: "ตั้งค่า" } as const;
+const TABS = { today: "วันนี้", summary: "สรุปรายเดือน", payroll: "ค่าแรง", pending: "รอดำเนินการ", employees: "พนักงาน", settings: "ตั้งค่า" } as const;
 type Tab = keyof typeof TABS;
 
 export default function Admin() {
@@ -14,7 +17,8 @@ export default function Admin() {
   const [pending, setPending] = useState(0);
   useEffect(() => {
     api<{ user: Profile }>("/api/me").then((m) => (m.user.role === "owner" ? setOk(true) : (location.href = "/clock")));
-    api<unknown[]>("/api/admin/pending").then((r) => setPending(r.length)).catch(() => {});
+    Promise.all([api<unknown[]>("/api/admin/pending"), api<unknown[]>("/api/admin/leaves?status=pending")])
+      .then(([a, b]) => setPending(a.length + b.length)).catch(() => {});
   }, []);
   if (!ok) return <main className="p-8 text-center text-slate-400">กำลังโหลด…</main>;
   return (
@@ -36,6 +40,7 @@ export default function Admin() {
       </nav>
       {tab === "today" && <Today pending={pending} goPending={() => setTab("pending")} />}
       {tab === "summary" && <Summary />}
+      {tab === "payroll" && <Payroll />}
       {tab === "pending" && <Pending onCount={setPending} />}
       {tab === "employees" && <Employees />}
       {tab === "settings" && <Settings />}
@@ -54,7 +59,7 @@ function Working({ since }: { since: number | null | undefined }) {
   );
 }
 
-type TodayData = { date: string; rules: { workStart: string }; rows: { user: Profile; day: Day | null }[] };
+type TodayData = { date: string; rules: { workStart: string }; rows: { user: Profile; day: Day | null; leave: Leave | null }[] };
 
 function Today({ pending, goPending }: { pending: number; goPending: () => void }) {
   const [data, setData] = useState<TodayData>();
@@ -69,7 +74,8 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
   const nowHM = new Date(Date.now() + 7 * 3600_000).toISOString().slice(11, 16);
   const pastStart = nowHM > data.rules.workStart;
   const working = data.rows.filter((r) => r.day?.open);
-  const absent = data.rows.filter((r) => !r.day);
+  const absent = data.rows.filter((r) => !r.day && !r.leave);
+  const onLeave = data.rows.filter((r) => !r.day && r.leave);
   const done = data.rows.filter((r) => r.day && !r.day.open);
   const late = data.rows.filter((r) => r.day && r.day.lateMin > 0).length;
 
@@ -94,6 +100,7 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
       </div>
       <Group title="กำลังทำงาน" rows={working} />
       <Group title={pastStart ? `ยังไม่เข้างาน (เลย ${data.rules.workStart} แล้ว)` : "ยังไม่เข้างาน"} rows={absent} alert={pastStart} />
+      <Group title="ลาวันนี้" rows={onLeave} />
       <Group title="เลิกงานแล้ว" rows={done} />
     </section>
   );
@@ -105,7 +112,7 @@ function Group({ title, rows, alert }: { title: string; rows: TodayData["rows"];
     <div className="card p-0">
       <h2 className={`px-5 pt-4 font-semibold ${alert ? "text-red-700" : "text-sky-900"}`}>{title} ({rows.length})</h2>
       <ul className="divide-y divide-sky-50">
-        {rows.map(({ user, day }) => (
+        {rows.map(({ user, day, leave }) => (
           <li key={user.id} className="flex flex-wrap items-center gap-2 px-5 py-3">
             <Link className="font-medium text-sky-700 hover:underline" href={`/admin/employees/${user.id}`}>
               {user.firstName} {user.lastName}
@@ -113,10 +120,16 @@ function Group({ title, rows, alert }: { title: string; rows: TodayData["rows"];
             {user.nickname && <span className="text-slate-400">({user.nickname})</span>}
             {day?.open && <Working since={day.sessions.at(-1)!.clockIn} />}
             {day && day.lateMin > 0 && <span className="badge bg-amber-100 text-amber-800">สาย {day.lateMin} นาที</span>}
+            {leave && (
+              <span className="badge bg-violet-100 text-violet-700">
+                {day ? "มีลาวันนี้ · " : ""}{LEAVE_TYPE[leave.type]}{leave.part !== "full" ? (leave.part === "am" ? " (ครึ่งเช้า)" : " (ครึ่งบ่าย)") : ""}
+              </span>
+            )}
+            {leave && !day && <span className="text-sm text-slate-500">— {leave.reason}</span>}
             <span className="ml-auto text-sm text-slate-500">
               {day
                 ? `เข้า ${timeOf(day.sessions[0].clockIn)}${day.open ? "" : ` · ออก ${timeOf(day.sessions.at(-1)!.clockOut)} · ${hrs(day.regularMin)}`}`
-                : user.phone && <a className="text-sky-700" href={`tel:${user.phone}`}>โทร {user.phone}</a>}
+                : !leave && user.phone && <a className="text-sky-700" href={`tel:${user.phone}`}>โทร {user.phone}</a>}
             </span>
           </li>
         ))}
@@ -127,7 +140,7 @@ function Group({ title, rows, alert }: { title: string; rows: TodayData["rows"];
 
 function Summary() {
   const [month, setMonth] = useState(thisMonth);
-  const [rows, setRows] = useState<(Totals & { user: Profile; workingSince: number | null })[]>();
+  const [rows, setRows] = useState<(Totals & { user: Profile; workingSince: number | null; leaveDays: number })[]>();
   const [showInactive, setShowInactive] = useState(false);
   useEffect(() => { api<{ rows: typeof rows }>(`/api/admin/summary?month=${month}`).then((r) => setRows(r.rows)); }, [month]);
   const list = rows?.filter((r) => showInactive || r.user.active);
@@ -147,7 +160,7 @@ function Summary() {
         <table className="w-full min-w-[640px] text-sm">
           <thead className="text-left text-slate-500">
             <tr className="border-b border-sky-100">
-              {["พนักงาน", "วันทำงาน", "ชม.ปกติ", "OT อนุมัติ", "OT รออนุมัติ", "สาย", "ลืมออก"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}
+              {["พนักงาน", "วันทำงาน", "ชม.ปกติ", "OT อนุมัติ", "OT รออนุมัติ", "สาย", "ลืมออก", "ลา (วัน)"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -167,6 +180,7 @@ function Summary() {
                 <td className="px-2 py-2">{r.otPendingMin ? <span className="text-sky-700">{hrs(r.otPendingMin)}</span> : "—"}</td>
                 <td className="px-2 py-2">{r.lateDays ? `${r.lateDays} วัน (${r.lateMin} น.)` : "—"}</td>
                 <td className="px-2 py-2">{r.forgotten ? <span className="text-red-600">{r.forgotten}</span> : "—"}</td>
+                <td className="px-2 py-2">{r.leaveDays || "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -179,18 +193,29 @@ function Summary() {
 
 function Pending({ onCount }: { onCount: (n: number) => void }) {
   const [items, setItems] = useState<(Day & { user: Profile })[]>();
+  const [leaves, setLeaves] = useState<Leave[]>([]);
   const [err, setErr] = useState("");
   const load = useCallback(
-    () => api<(Day & { user: Profile })[]>("/api/admin/pending").then((r) => { setItems(r); onCount(r.length); }),
+    () => Promise.all([api<(Day & { user: Profile })[]>("/api/admin/pending"), api<Leave[]>("/api/admin/leaves?status=pending")])
+      .then(([d, l]) => { setItems(d); setLeaves(l); onCount(d.length + l.length); }),
     [onCount],
   );
   useEffect(() => { load(); }, [load]);
   const run = (p: Promise<unknown>) => p.then(load).catch((e) => setErr(e.message));
 
   if (!items) return <p className="text-slate-400">กำลังโหลด…</p>;
-  if (!items.length) return <p className="card text-center text-slate-500">ไม่มีรายการรอดำเนินการ 🎉</p>;
+  if (!items.length && !leaves.length) return <p className="card text-center text-slate-500">ไม่มีรายการรอดำเนินการ 🎉</p>;
   return (
+    <>
+    {leaves.length > 0 && (
+      <section className="card divide-y divide-sky-100">
+        <h2 className="pb-2 font-semibold text-sky-900">คำขอลา ({leaves.length})</h2>
+        {leaves.map((l) => <LeaveItem key={l.id} l={l} actions={<LeaveDecision l={l} onDone={load} />} />)}
+      </section>
+    )}
+    {items.length > 0 && (
     <section className="card divide-y divide-sky-100">
+      <h2 className="pb-2 font-semibold text-sky-900">OT รออนุมัติ / ลืมออกงาน ({items.length})</h2>
       {err && <p className="pb-2 text-sm text-red-600">{err}</p>}
       {items.map((d) => (
         <div key={`${d.userId}|${d.date}`} className="space-y-2 py-3">
@@ -210,15 +235,17 @@ function Pending({ onCount }: { onCount: (n: number) => void }) {
         </div>
       ))}
     </section>
+    )}
+    </>
   );
 }
 
 const FIELDS = [["username", "ชื่อผู้ใช้"], ["firstName", "ชื่อจริง"], ["lastName", "นามสกุล"], ["nickname", "ชื่อเล่น"], ["phone", "เบอร์โทร"], ["lineId", "LINE ID"]] as const;
 
 function Employees() {
-  const [list, setList] = useState<(Profile & { workingSince: number | null })[]>();
+  const [list, setList] = useState<(Profile & { workingSince: number | null; rate: Rate | null })[]>();
   const [editing, setEditing] = useState<Profile | "new" | null>(null);
-  const load = useCallback(() => api<(Profile & { workingSince: number | null })[]>("/api/admin/employees").then(setList), []);
+  const load = useCallback(() => api<(Profile & { workingSince: number | null; rate: Rate | null })[]>("/api/admin/employees").then(setList), []);
   useEffect(() => { load(); }, [load]);
 
   return (
@@ -226,7 +253,8 @@ function Employees() {
       <div className="flex">
         <button className="btn ml-auto" onClick={() => setEditing("new")}>+ เพิ่มพนักงาน</button>
       </div>
-      {editing && <EmployeeForm emp={editing === "new" ? null : editing} onDone={() => { setEditing(null); load(); }} />}
+      {editing && <EmployeeForm key={editing === "new" ? 0 : editing.id} emp={editing === "new" ? null : editing} onDone={(created) => { setEditing(created ?? null); load(); }} />}
+      {editing && editing !== "new" && <Rates key={editing.id} userId={editing.id} />}
       <div className="card divide-y divide-sky-100 p-0">
         {list?.map((e) => (
           <div key={e.id} className="flex flex-wrap items-center gap-2 px-5 py-3">
@@ -237,6 +265,11 @@ function Employees() {
                 <Working since={e.workingSince} />
               </p>
               <p className="text-sm text-slate-500">@{e.username} · {e.phone || "—"} · LINE: {e.lineId || "—"}</p>
+              <p className="text-sm">
+                {e.rate
+                  ? <span className="text-slate-600">ค่าแรง {baht(e.rate.rateSatang)}/ชม. · OT {baht(e.rate.otRateSatang)}/ชม.</span>
+                  : <span className="badge bg-amber-100 text-amber-800">ยังไม่ได้ตั้งค่าแรง</span>}
+              </p>
             </div>
             <button className="btn-ghost ml-auto text-sm" onClick={() => setEditing(e)}>แก้ไข</button>
           </div>
@@ -247,22 +280,22 @@ function Employees() {
   );
 }
 
-function EmployeeForm({ emp, onDone }: { emp: Profile | null; onDone: () => void }) {
+function EmployeeForm({ emp, onDone }: { emp: Profile | null; onDone: (created?: Profile) => void }) {
   const [err, setErr] = useState("");
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const body: Record<string, unknown> = Object.fromEntries(new FormData(e.currentTarget));
     if (emp && !body.password) delete body.password;
     try {
-      await api(emp ? `/api/admin/employees/${emp.id}` : "/api/admin/employees", { method: emp ? "PATCH" : "POST", body });
-      onDone();
+      const saved = await api<Profile>(emp ? `/api/admin/employees/${emp.id}` : "/api/admin/employees", { method: emp ? "PATCH" : "POST", body });
+      onDone(emp ? undefined : saved); // พนักงานใหม่: เปิดค้างไว้ให้ตั้งค่าแรงต่อ
     } catch (e) {
       setErr((e as Error).message);
     }
   }
   async function toggle() {
     if (!emp || !confirm(emp.active ? "ปิดการใช้งานพนักงานคนนี้? (ประวัติยังอยู่)" : "เปิดใช้งานอีกครั้ง?")) return;
-    await api(`/api/admin/employees/${emp.id}`, { method: "PATCH", body: { active: !emp.active } }).then(onDone).catch((e) => setErr(e.message));
+    await api(`/api/admin/employees/${emp.id}`, { method: "PATCH", body: { active: !emp.active } }).then(() => onDone()).catch((e) => setErr(e.message));
   }
   return (
     <form onSubmit={submit} className="card grid gap-3 sm:grid-cols-2">
@@ -280,7 +313,7 @@ function EmployeeForm({ emp, onDone }: { emp: Profile | null; onDone: () => void
       {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
       <div className="flex gap-2 sm:col-span-2">
         <button className="btn">บันทึก</button>
-        <button type="button" className="btn-ghost" onClick={onDone}>ยกเลิก</button>
+        <button type="button" className="btn-ghost" onClick={() => onDone()}>{emp ? "ปิด" : "ยกเลิก"}</button>
         {emp && (
           <button type="button" className={`btn-ghost ml-auto ${emp.active ? "text-red-600" : ""}`} onClick={toggle}>
             {emp.active ? "ปิดการใช้งาน" : "เปิดใช้งาน"}

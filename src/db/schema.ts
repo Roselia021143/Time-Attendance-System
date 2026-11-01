@@ -63,3 +63,37 @@ export const auditLogs = sqliteTable("audit_logs", {
   reason: text("reason").notNull().default(""),
   createdAt: integer("created_at").notNull(),
 });
+
+// ประวัติค่าแรง: อัตราของวันใดใช้แถวล่าสุดที่ effectiveFrom <= วันนั้น (เงินเก็บเป็นสตางค์)
+export const payRates = sqliteTable(
+  "pay_rates",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id").notNull().references(() => users.id),
+    effectiveFrom: text("effective_from").notNull(),
+    rateSatang: integer("rate_satang").notNull(),
+    otRateSatang: integer("ot_rate_satang").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("pr_user").on(t.userId, t.effectiveFrom)],
+);
+
+export const leaveRequests = sqliteTable(
+  "leave_requests",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id").notNull().references(() => users.id),
+    type: text("type", { enum: ["sick", "personal", "vacation", "other"] }).notNull(),
+    fromDate: text("from_date").notNull(),
+    toDate: text("to_date").notNull(),
+    part: text("part", { enum: ["full", "am", "pm"] }).notNull().default("full"),
+    reason: text("reason").notNull(),
+    status: text("status", { enum: ["pending", "approved", "rejected", "cancelled"] }).notNull().default("pending"),
+    decisionNote: text("decision_note").notNull().default(""),
+    decidedBy: integer("decided_by"),
+    decidedAt: integer("decided_at"),
+    createdBy: integer("created_by").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("lr_user_dates").on(t.userId, t.fromDate, t.toDate), index("lr_status").on(t.status)],
+);

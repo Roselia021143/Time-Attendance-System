@@ -4,15 +4,17 @@ import Link from "next/link";
 import AdminDayActions from "@/components/AdminDayActions";
 import DayList from "@/components/DayList";
 import TimeInput from "@/components/TimeInput";
-import { api, dateLabel, hrs, monthLabel, shiftMonth, thisMonth, type Day, type Profile, type Totals } from "@/lib/client";
+import { LeaveDecision, LeaveForm, LeaveItem } from "@/components/Leave";
+import { api, dateLabel, hrs, monthLabel, shiftMonth, thisMonth, type Day, type Leave, type Profile, type Totals } from "@/lib/client";
 
-type Data = { user: Profile; totals: Totals; days: Day[] };
+type Data = { user: Profile; totals: Totals & { leaveDays: number }; days: Day[]; leaves: Leave[] };
 
 export default function EmployeeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [month, setMonth] = useState("");
   const [data, setData] = useState<Data>();
   const [err, setErr] = useState("");
+  const [leaveOpen, setLeaveOpen] = useState(false);
 
   const load = useCallback(
     () => api<Data>(`/api/admin/employees/${id}/days?month=${month}`).then(setData).catch((e) => setErr(e.message)),
@@ -49,16 +51,28 @@ export default function EmployeeDetail({ params }: { params: Promise<{ id: strin
         </div>
       </header>
 
-      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[["วันทำงาน", `${t.daysWorked} วัน`], ["ชม.ปกติ", hrs(t.regularMin)], ["OT อนุมัติ", hrs(t.otApprovedMin)], ["สาย", `${t.lateDays} วัน`]].map(([l, v]) => (
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {[["วันทำงาน", `${t.daysWorked} วัน`], ["ชม.ปกติ", hrs(t.regularMin)], ["OT อนุมัติ", hrs(t.otApprovedMin)], ["สาย", `${t.lateDays} วัน`], ["ลา", `${t.leaveDays} วัน`]].map(([l, v]) => (
           <div key={l} className="card p-3 text-center"><p className="text-xs text-slate-500">{l}</p><p className="font-semibold text-sky-900">{v}</p></div>
         ))}
       </section>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
       <section className="card">
-        <DayList days={data.days} renderActions={(d) => <AdminDayActions day={d} onChange={load} />} />
+        <DayList days={data.days} leaves={data.leaves} renderActions={(d) => <AdminDayActions day={d} onChange={load} />} />
       </section>
+
+      <section className="card">
+        <div className="flex items-center">
+          <h2 className="font-semibold text-sky-900">การลา {monthLabel(month)}</h2>
+          <button className="btn-ghost ml-auto py-1 text-sm" onClick={() => setLeaveOpen(!leaveOpen)}>+ ลงลาแทน</button>
+        </div>
+        {!data.leaves.length && <p className="py-3 text-sm text-slate-400">ไม่มีการลาในเดือนนี้</p>}
+        <div className="divide-y divide-sky-100">
+          {data.leaves.map((l) => <LeaveItem key={l.id} l={l} actions={<LeaveDecision l={l} onDone={load} />} />)}
+        </div>
+      </section>
+      {leaveOpen && <LeaveForm endpoint="/api/admin/leaves" userId={Number(id)} onDone={() => { setLeaveOpen(false); load(); }} onCancel={() => setLeaveOpen(false)} />}
 
       <form onSubmit={addSession} className="card flex flex-wrap items-end gap-2">
         <h2 className="w-full font-semibold text-sky-900">เพิ่มรอบเวลา {monthLabel(month)} (กรณีพนักงานลืมกด)</h2>

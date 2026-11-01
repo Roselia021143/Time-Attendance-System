@@ -1,28 +1,34 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import DayList from "@/components/DayList";
-import { api, hrs, logout, timeOf, type Day, type Profile, type Totals } from "@/lib/client";
+import { LeaveForm, LeaveItem } from "@/components/Leave";
+import { periodLabel } from "@/components/Payroll";
+import { api, baht, hrs, logout, timeOf, type Day, type Leave, type Pay, type Profile, type Totals } from "@/lib/client";
 
-type Summary = { from: string; to: string; totals: Totals; days: Day[] };
+type Summary = { from: string; to: string; totals: Totals & { leaveDays: number }; pay: Pay; days: Day[] };
 
 export default function Clock() {
   const [me, setMe] = useState<{ user: Profile; openSince: number | null }>();
   const [now, setNow] = useState(Date.now());
-  const [period, setPeriod] = useState<"week" | "month">("month");
+  const [period, setPeriod] = useState<"week" | "month" | "year">("month");
   const [offset, setOffset] = useState(0);
   const [sum, setSum] = useState<Summary>();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [pwOpen, setPwOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaves, setLeaves] = useState<Leave[]>([]);
 
   const load = useCallback(async () => {
-    const [m, s] = await Promise.all([
+    const [m, s, l] = await Promise.all([
       api<{ user: Profile; openSince: number | null }>("/api/me"),
       api<Summary>(`/api/me/summary?period=${period}&offset=${offset}`),
+      api<Leave[]>("/api/me/leaves"),
     ]);
     if (m.user.role === "owner") location.href = "/admin";
     setMe(m);
     setSum(s);
+    setLeaves(l);
   }, [period, offset]);
 
   useEffect(() => { load().catch((e) => setMsg(e.message)); }, [load]);
@@ -51,13 +57,15 @@ export default function Clock() {
           <p className="text-sm text-slate-500">สวัสดี</p>
           <h1 className="text-lg font-semibold text-sky-900">{me.user.firstName} {me.user.lastName}</h1>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-ghost text-sm" onClick={() => setPwOpen(!pwOpen)}>เปลี่ยนรหัส</button>
-          <button className="btn-ghost text-sm" onClick={logout}>ออกจากระบบ</button>
+        <div className="flex shrink-0 gap-1.5">
+          <button className="btn-ghost whitespace-nowrap px-2.5 text-xs" onClick={() => setLeaveOpen(!leaveOpen)}>ขอลา</button>
+          <button className="btn-ghost whitespace-nowrap px-2.5 text-xs" onClick={() => setPwOpen(!pwOpen)}>เปลี่ยนรหัส</button>
+          <button className="btn-ghost whitespace-nowrap px-2.5 text-xs" onClick={logout}>ออกจากระบบ</button>
         </div>
       </header>
 
       {pwOpen && <PasswordForm onDone={() => setPwOpen(false)} />}
+      {leaveOpen && <LeaveForm endpoint="/api/me/leaves" onDone={() => { setLeaveOpen(false); setMsg("ส่งคำขอลาแล้ว รอเจ้าของร้านอนุมัติ"); load(); }} onCancel={() => setLeaveOpen(false)} />}
 
       <section className="card text-center">
         <p className="text-5xl font-semibold tabular-nums text-sky-900">
@@ -82,10 +90,10 @@ export default function Clock() {
       <section className="card space-y-3">
         <div className="flex items-center gap-2">
           <div className="flex rounded-xl bg-sky-50 p-1 text-sm">
-            {(["week", "month"] as const).map((p) => (
+            {(["week", "month", "year"] as const).map((p) => (
               <button key={p} onClick={() => { setPeriod(p); setOffset(0); }}
                 className={`rounded-lg px-3 py-1 ${period === p ? "bg-white font-medium text-sky-700 shadow-sm" : "text-slate-500"}`}>
-                {p === "week" ? "สัปดาห์" : "เดือน"}
+                {{ week: "สัปดาห์", month: "เดือน", year: "ปี" }[p]}
               </button>
             ))}
           </div>
@@ -96,20 +104,46 @@ export default function Clock() {
         </div>
         {sum && t && (
           <>
-            <p className="text-sm text-slate-500">{sum.from} ถึง {sum.to}</p>
+            <p className="text-sm text-slate-500">{periodLabel(period, sum.from, sum.to)}</p>
             <div className="grid grid-cols-3 gap-2 text-center">
               <Stat label="ชม.ปกติ" value={hrs(t.regularMin)} />
               <Stat label="OT อนุมัติ" value={hrs(t.otApprovedMin)} />
               <Stat label="รวม" value={hrs(t.regularMin + t.otApprovedMin)} strong />
             </div>
+            <div className="rounded-xl bg-sky-50 p-3 text-sm">
+              <div className="flex items-baseline">
+                <span className="text-slate-600">ค่าแรง (ยืนยันแล้ว)</span>
+                <span className="ml-auto text-xl font-semibold text-sky-900">{baht(sum.pay.totalSatang)}</span>
+              </div>
+              <p className="text-slate-500">ปกติ {baht(sum.pay.regularSatang)} · OT {baht(sum.pay.otSatang)}</p>
+              {sum.pay.otPendingSatang > 0 && <p className="text-sky-700">OT รออนุมัติ {baht(sum.pay.otPendingSatang)} (ยังไม่รวม)</p>}
+              {sum.pay.missingRateDays > 0 && <p className="text-amber-700">มี {sum.pay.missingRateDays} วันที่ยังไม่ได้ตั้งค่าแรง กรุณาแจ้งเจ้าของร้าน</p>}
+            </div>
             <p className="text-sm text-slate-500">
               มาทำงาน {t.daysWorked} วัน
+              {t.leaveDays > 0 && <> · ลา {t.leaveDays} วัน</>}
               {t.otPendingMin > 0 && <> · OT รออนุมัติ {hrs(t.otPendingMin)}</>}
             </p>
-            <DayList days={sum.days} />
+            {period !== "year" && <DayList days={sum.days} leaves={leaves} />}
           </>
         )}
       </section>
+
+      {leaves.length > 0 && (
+        <section className="card">
+          <h2 className="font-semibold text-sky-900">คำขอลาของฉัน</h2>
+          <div className="divide-y divide-sky-100">
+            {leaves.map((l) => (
+              <LeaveItem key={l.id} l={l} actions={l.status === "pending" && (
+                <button className="text-sm text-red-600 hover:underline"
+                  onClick={() => confirm("ยกเลิกคำขอลานี้?") && api(`/api/me/leaves/${l.id}/cancel`, { method: "POST" }).then(load)}>
+                  ยกเลิกคำขอ
+                </button>
+              )} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

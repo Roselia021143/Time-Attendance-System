@@ -42,3 +42,24 @@ export type Day = {
   sessions: { id: number; clockIn: number; clockOut: number | null; edited: boolean }[];
 };
 export type Totals = { daysWorked: number; regularMin: number; otApprovedMin: number; otPendingMin: number; lateDays: number; lateMin: number; forgotten: number };
+
+export const baht = (satang: number) =>
+  (satang / 100).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ฿";
+
+export type Pay = { regularMin: number; otMin: number; regularSatang: number; otSatang: number; otPendingSatang: number; totalSatang: number; missingRateDays: number };
+export type Rate = { id: number; effectiveFrom: string; rateSatang: number; otRateSatang: number };
+
+export const LEAVE_TYPE: Record<string, string> = { sick: "ลาป่วย", personal: "ลากิจ", vacation: "ลาพักร้อน", other: "อื่น ๆ" };
+export const LEAVE_PART: Record<string, string> = { full: "เต็มวัน", am: "ครึ่งเช้า", pm: "ครึ่งบ่าย" };
+export const LEAVE_STATUS: Record<string, [string, string]> = {
+  pending: ["รออนุมัติ", "bg-sky-100 text-sky-700"],
+  approved: ["อนุมัติแล้ว", "bg-emerald-100 text-emerald-700"],
+  rejected: ["ไม่อนุมัติ", "bg-red-100 text-red-700"],
+  cancelled: ["ยกเลิก", "bg-slate-100 text-slate-500"],
+};
+export type Leave = {
+  id: number; userId: number; type: string; fromDate: string; toDate: string; part: string; reason: string;
+  status: string; decisionNote: string; days?: number; user?: Profile; usedThisYear?: { sameType: number; total: number };
+};
+export const leaveRange = (l: Leave) =>
+  l.fromDate === l.toDate ? `${dateLabel(l.fromDate)} (${LEAVE_PART[l.part]})` : `${dateLabel(l.fromDate)} – ${dateLabel(l.toDate)}`;
