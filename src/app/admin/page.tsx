@@ -4,6 +4,7 @@ import Link from "next/link";
 import { OtControl } from "@/components/AdminDayActions";
 import TimeInput from "@/components/TimeInput";
 import Payroll from "@/components/Payroll";
+import { matchUser, SearchBox } from "@/components/SearchBox";
 import Rates from "@/components/Rates";
 import { LeaveDecision, LeaveItem } from "@/components/Leave";
 import { api, baht, dateLabel, hrs, LEAVE_TYPE, logout, monthLabel, shiftMonth, thisMonth, timeOf, type Day, type Leave, type Profile, type Rate, type Totals } from "@/lib/client";
@@ -22,7 +23,7 @@ export default function Admin() {
   }, []);
   if (!ok) return <main className="p-8 text-center text-slate-400">กำลังโหลด…</main>;
   return (
-    <main className="mx-auto max-w-5xl space-y-4 p-4 pb-10">
+    <main className="mx-auto max-w-7xl space-y-4 p-4 pb-10">
       <header className="flex items-center gap-3">
         <h1 className="text-xl font-semibold text-sky-900">แดชบอร์ดเจ้าของร้าน</h1>
         <button className="btn-ghost ml-auto text-sm" onClick={logout}>ออกจากระบบ</button>
@@ -98,22 +99,24 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
           </button>
         ))}
       </div>
-      <Group title="กำลังทำงาน" rows={working} />
-      <Group title={pastStart ? `ยังไม่เข้างาน (เลย ${data.rules.workStart} แล้ว)` : "ยังไม่เข้างาน"} rows={absent} alert={pastStart} />
-      <Group title="ลาวันนี้" rows={onLeave} />
-      <Group title="เลิกงานแล้ว" rows={done} />
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <Group title="กำลังทำงาน" rows={working} />
+        <Group title={pastStart ? `ยังไม่เข้างาน (เลย ${data.rules.workStart} แล้ว)` : "ยังไม่เข้างาน"} rows={absent} alert={pastStart && absent.length > 0} />
+        <Group title="ลาวันนี้" rows={onLeave} />
+        <Group title="เลิกงานแล้ว" rows={done} />
+      </div>
     </section>
   );
 }
 
 function Group({ title, rows, alert }: { title: string; rows: TodayData["rows"]; alert?: boolean }) {
-  if (!rows.length) return null;
   return (
     <div className="card p-0">
-      <h2 className={`px-5 pt-4 font-semibold ${alert ? "text-red-700" : "text-sky-900"}`}>{title} ({rows.length})</h2>
-      <ul className="divide-y divide-sky-50">
+      <h2 className={`border-b border-sky-100 px-5 py-3 font-semibold ${alert ? "text-red-700" : "text-sky-900"}`}>{title} ({rows.length})</h2>
+      {!rows.length && <p className="px-5 py-4 text-sm text-slate-400">—</p>}
+      <ul className="max-h-80 divide-y divide-sky-50 overflow-y-auto">
         {rows.map(({ user, day, leave }) => (
-          <li key={user.id} className="flex flex-wrap items-center gap-2 px-5 py-3">
+          <li key={user.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 px-5 py-2.5">
             <Link className="font-medium text-sky-700 hover:underline" href={`/admin/employees/${user.id}`}>
               {user.firstName} {user.lastName}
             </Link>
@@ -142,8 +145,9 @@ function Summary() {
   const [month, setMonth] = useState(thisMonth);
   const [rows, setRows] = useState<(Totals & { user: Profile; workingSince: number | null; leaveDays: number })[]>();
   const [showInactive, setShowInactive] = useState(false);
+  const [q, setQ] = useState("");
   useEffect(() => { api<{ rows: typeof rows }>(`/api/admin/summary?month=${month}`).then((r) => setRows(r.rows)); }, [month]);
-  const list = rows?.filter((r) => showInactive || r.user.active);
+  const list = rows?.filter((r) => (showInactive || r.user.active) && matchUser(r.user, q));
 
   return (
     <section className="card space-y-3">
@@ -154,11 +158,14 @@ function Summary() {
         <label className="ml-2 flex items-center gap-1 text-sm text-slate-500">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> แสดงพนักงานที่ปิดแล้ว
         </label>
-        <a className="btn ml-auto text-sm" href={`/api/admin/summary?month=${month}&format=csv`}>ดาวน์โหลด CSV</a>
+        <div className="ml-auto flex gap-2">
+          <SearchBox value={q} onChange={setQ} />
+          <a className="btn text-sm" href={`/api/admin/summary?month=${month}&format=csv`}>CSV</a>
+        </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="max-h-[65vh] overflow-auto">
         <table className="w-full min-w-[640px] text-sm">
-          <thead className="text-left text-slate-500">
+          <thead className="sticky top-0 z-10 bg-white text-left text-slate-500">
             <tr className="border-b border-sky-100">
               {["พนักงาน", "วันทำงาน", "ชม.ปกติ", "OT อนุมัติ", "OT รออนุมัติ", "สาย", "ลืมออก", "ลา (วัน)"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}
             </tr>
@@ -185,7 +192,7 @@ function Summary() {
             ))}
           </tbody>
         </table>
-        {list && !list.length && <p className="py-6 text-center text-slate-400">ยังไม่มีพนักงาน</p>}
+        {list && !list.length && <p className="py-6 text-center text-slate-400">{q ? "ไม่พบพนักงานที่ค้นหา" : "ยังไม่มีพนักงาน"}</p>}
       </div>
     </section>
   );
@@ -195,6 +202,7 @@ function Pending({ onCount }: { onCount: (n: number) => void }) {
   const [items, setItems] = useState<(Day & { user: Profile })[]>();
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [err, setErr] = useState("");
+  const [bulk, setBulk] = useState(false);
   const load = useCallback(
     () => Promise.all([api<(Day & { user: Profile })[]>("/api/admin/pending"), api<Leave[]>("/api/admin/leaves?status=pending")])
       .then(([d, l]) => { setItems(d); setLeaves(l); onCount(d.length + l.length); }),
@@ -206,16 +214,31 @@ function Pending({ onCount }: { onCount: (n: number) => void }) {
   if (!items) return <p className="text-slate-400">กำลังโหลด…</p>;
   if (!items.length && !leaves.length) return <p className="card text-center text-slate-500">ไม่มีรายการรอดำเนินการ 🎉</p>;
   return (
-    <>
+    <div className="grid items-start gap-4 lg:grid-cols-2">
     {leaves.length > 0 && (
-      <section className="card divide-y divide-sky-100">
+      <section className="card max-h-[75vh] divide-y divide-sky-100 overflow-y-auto">
         <h2 className="pb-2 font-semibold text-sky-900">คำขอลา ({leaves.length})</h2>
         {leaves.map((l) => <LeaveItem key={l.id} l={l} actions={<LeaveDecision l={l} onDone={load} />} />)}
       </section>
     )}
     {items.length > 0 && (
-    <section className="card divide-y divide-sky-100">
-      <h2 className="pb-2 font-semibold text-sky-900">OT รออนุมัติ / ลืมออกงาน ({items.length})</h2>
+    <section className="card max-h-[75vh] divide-y divide-sky-100 overflow-y-auto">
+      <div className="flex flex-wrap items-center gap-2 pb-2">
+        <h2 className="font-semibold text-sky-900">OT รออนุมัติ / ลืมออกงาน ({items.length})</h2>
+        {items.some((d) => !d.forgotten) && (
+          <button className="btn-ghost ml-auto py-1 text-sm" disabled={bulk}
+            onClick={() => {
+              const ot = items.filter((d) => !d.forgotten);
+              if (!confirm(`อนุมัติ OT ทั้ง ${ot.length} รายการ ตามเวลาที่ทำจริง?`)) return;
+              setBulk(true);
+              // ทีละรายการ: API อนุมัติเป็นรายวัน
+              run(ot.reduce((p, d) => p.then(() => api("/api/admin/ot", { body: { userId: d.userId, date: d.date, minutes: d.otRawMin } })), Promise.resolve() as Promise<unknown>)
+                .finally(() => setBulk(false)));
+            }}>
+            {bulk ? "กำลังอนุมัติ…" : "อนุมัติทั้งหมดตามจริง"}
+          </button>
+        )}
+      </div>
       {err && <p className="pb-2 text-sm text-red-600">{err}</p>}
       {items.map((d) => (
         <div key={`${d.userId}|${d.date}`} className="space-y-2 py-3">
@@ -236,7 +259,7 @@ function Pending({ onCount }: { onCount: (n: number) => void }) {
       ))}
     </section>
     )}
-    </>
+    </div>
   );
 }
 
@@ -245,36 +268,54 @@ const FIELDS = [["username", "ชื่อผู้ใช้"], ["firstName", "�
 function Employees() {
   const [list, setList] = useState<(Profile & { workingSince: number | null; rate: Rate | null })[]>();
   const [editing, setEditing] = useState<Profile | "new" | null>(null);
+  const [q, setQ] = useState("");
   const load = useCallback(() => api<(Profile & { workingSince: number | null; rate: Rate | null })[]>("/api/admin/employees").then(setList), []);
   useEffect(() => { load(); }, [load]);
+  const shown = list?.filter((e) => matchUser(e, q));
+  const selectedId = editing && editing !== "new" ? editing.id : null;
 
   return (
-    <section className="space-y-3">
-      <div className="flex">
-        <button className="btn ml-auto" onClick={() => setEditing("new")}>+ เพิ่มพนักงาน</button>
-      </div>
-      {editing && <EmployeeForm key={editing === "new" ? "form-new" : `form-${editing.id}`} emp={editing === "new" ? null : editing} onDone={(created) => { setEditing(created ?? null); load(); }} />}
-      {editing && editing !== "new" && <Rates key={`rates-${editing.id}`} userId={editing.id} />}
-      <div className="card divide-y divide-sky-100 p-0">
-        {list?.map((e) => (
-          <div key={e.id} className="flex flex-wrap items-center gap-2 px-5 py-3">
-            <div className="min-w-0">
+    <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="card p-0">
+        <div className="flex items-center gap-2 border-b border-sky-100 p-3">
+          <SearchBox value={q} onChange={setQ} />
+          <span className="text-sm text-slate-400">{list?.length ?? 0} คน</span>
+          <button className="btn ml-auto py-1.5 text-sm" onClick={() => setEditing("new")}>+ เพิ่ม</button>
+        </div>
+        <div className="max-h-[70vh] divide-y divide-sky-50 overflow-y-auto">
+          {shown?.map((e) => (
+            <button key={e.id} onClick={() => setEditing(e)}
+              className={`block w-full px-4 py-2.5 text-left transition hover:bg-sky-50 ${selectedId === e.id ? "bg-sky-50 ring-2 ring-inset ring-sky-300" : ""}`}>
               <p className="font-medium text-sky-900">
-                {e.firstName} {e.lastName} {e.nickname && <span className="text-slate-400">({e.nickname})</span>}
+                {e.firstName} {e.lastName} {e.nickname && <span className="font-normal text-slate-400">({e.nickname})</span>}
                 {!e.active && <span className="badge ml-1 bg-slate-100 text-slate-500">ปิดใช้งาน</span>}
                 <Working since={e.workingSince} />
               </p>
-              <p className="text-sm text-slate-500">@{e.username} · {e.phone || "—"} · LINE: {e.lineId || "—"}</p>
-              <p className="text-sm">
+              <p className="text-xs text-slate-500">
+                @{e.username} · {e.phone || "—"} ·{" "}
                 {e.rate
-                  ? <span className="text-slate-600">ค่าแรง {baht(e.rate.rateSatang)}/ชม. · OT {baht(e.rate.otRateSatang)}/ชม.</span>
-                  : <span className="badge bg-amber-100 text-amber-800">ยังไม่ได้ตั้งค่าแรง</span>}
+                  ? <>{baht(e.rate.rateSatang)}/ชม. · OT {baht(e.rate.otRateSatang)}</>
+                  : <span className="text-amber-700">ยังไม่ได้ตั้งค่าแรง</span>}
               </p>
-            </div>
-            <button className="btn-ghost ml-auto text-sm" onClick={() => setEditing(e)}>แก้ไข</button>
-          </div>
-        ))}
-        {list && !list.length && <p className="p-6 text-center text-slate-400">ยังไม่มีพนักงาน</p>}
+            </button>
+          ))}
+          {shown && !shown.length && <p className="p-6 text-center text-slate-400">{q ? "ไม่พบพนักงานที่ค้นหา" : "ยังไม่มีพนักงาน"}</p>}
+        </div>
+      </div>
+
+      {/* มือถือ: แผงแก้ไขขึ้นก่อนรายชื่อ จะได้ไม่ต้องเลื่อนหา */}
+      <div className={`space-y-4 lg:sticky lg:top-4 ${editing ? "order-first lg:order-none" : ""}`}>
+        {editing ? (
+          <>
+            {editing !== "new" && (
+              <Link className="text-sm text-sky-700 hover:underline" href={`/admin/employees/${editing.id}`}>ดูเวลางานและการลาของ {editing.firstName} →</Link>
+            )}
+            <EmployeeForm key={editing === "new" ? "form-new" : `form-${editing.id}`} emp={editing === "new" ? null : editing} onDone={(created) => { setEditing(created ?? null); load(); }} />
+            {editing !== "new" && <Rates key={`rates-${editing.id}`} userId={editing.id} />}
+          </>
+        ) : (
+          <p className="card hidden py-10 text-center text-slate-400 lg:block">เลือกพนักงานทางซ้ายเพื่อดูหรือแก้ไข</p>
+        )}
       </div>
     </section>
   );

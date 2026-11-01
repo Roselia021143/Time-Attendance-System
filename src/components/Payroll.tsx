@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, baht, dateLabel, hrs, monthLabel, type Pay, type Profile } from "@/lib/client";
+import { matchUser, SearchBox } from "./SearchBox";
 
 type Period = "week" | "month" | "year";
 type Row = Pay & { user: Profile; hasRate: boolean };
@@ -15,12 +16,13 @@ export default function Payroll() {
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<Data>();
   const [pick, setPick] = useState<Profile | null>(null);
+  const [q, setQ] = useState("");
   const qs = `period=${period}&offset=${offset}`;
   useEffect(() => { setPick(null); api<Data>(`/api/admin/payroll?${qs}`).then(setData); }, [qs]);
 
   return (
-    <section className="space-y-3">
-      <div className="card space-y-3">
+    <section className={`grid items-start gap-4 ${pick && period === "year" ? "xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" : ""}`}>
+      <div className="card min-w-0 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-xl bg-sky-50 p-1 text-sm">
             {(["week", "month", "year"] as const).map((p) => (
@@ -33,17 +35,20 @@ export default function Payroll() {
           <button className="btn-ghost px-2 py-1" aria-label="ก่อนหน้า" onClick={() => setOffset(offset + 1)}>‹</button>
           <span className="min-w-36 text-center font-medium">{data && periodLabel(period, data.from, data.to)}</span>
           <button className="btn-ghost px-2 py-1" aria-label="ถัดไป" disabled={offset === 0} onClick={() => setOffset(offset - 1)}>›</button>
-          <a className="btn ml-auto text-sm" href={`/api/admin/payroll?${qs}&format=csv`}>ดาวน์โหลด CSV</a>
+          <div className="ml-auto flex gap-2">
+            <SearchBox value={q} onChange={setQ} />
+            <a className="btn text-sm" href={`/api/admin/payroll?${qs}&format=csv`}>CSV</a>
+          </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="max-h-[60vh] overflow-auto">
           <table className="w-full min-w-[720px] text-sm">
-            <thead className="text-left text-slate-500">
+            <thead className="sticky top-0 z-10 bg-white text-left text-slate-500">
               <tr className="border-b border-sky-100">
                 {["พนักงาน", "ชม.ปกติ", "ค่าแรงปกติ", "ชม.OT", "ค่า OT", "รวม", "OT รออนุมัติ"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}
               </tr>
             </thead>
             <tbody>
-              {data?.rows.map((r) => (
+              {data?.rows.filter((r) => matchUser(r.user, q)).map((r) => (
                 <tr key={r.user.id} className="border-b border-sky-50 hover:bg-sky-50/50">
                   <td className="px-2 py-2">
                     {period === "year" ? (
@@ -62,7 +67,7 @@ export default function Payroll() {
               ))}
             </tbody>
             {data && data.rows.length > 0 && (
-              <tfoot>
+              <tfoot className="sticky bottom-0 bg-white shadow-[0_-1px_0_#e0f2fe]">
                 <tr className="font-semibold text-sky-900"><td className="px-2 py-2">รวมทั้งร้าน</td><Cells p={data.total} /></tr>
               </tfoot>
             )}
@@ -95,13 +100,13 @@ function YearBreakdown({ user, offset, onClose }: { user: Profile; offset: numbe
     api<{ months: typeof months }>(`/api/admin/payroll?period=year&offset=${offset}&userId=${user.id}`).then((r) => setMonths(r.months));
   }, [user.id, offset]);
   return (
-    <div className="card space-y-2">
+    <div className="card min-w-0 space-y-2 xl:sticky xl:top-4">
       <div className="flex items-center">
         <h2 className="font-semibold text-sky-900">ค่าแรงรายเดือน · {user.firstName} {user.lastName}</h2>
         <button className="btn-ghost ml-auto py-1 text-sm" onClick={onClose}>ปิด</button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[560px] text-sm">
           <thead className="text-left text-slate-500">
             <tr className="border-b border-sky-100">
               {["เดือน", "ชม.ปกติ", "ค่าแรงปกติ", "ชม.OT", "ค่า OT", "รวม", "OT รออนุมัติ"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}

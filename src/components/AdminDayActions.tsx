@@ -10,7 +10,8 @@ export default function AdminDayActions({ day, onChange }: { day: Day; onChange:
   const [err, setErr] = useState("");
   const [editing, setEditing] = useState(day.forgotten); // ลืมออกงาน = เปิดฟอร์มให้เลย
   const run = (p: Promise<unknown>) => p.then(() => { setEditing(false); onChange(); }).catch((e) => setErr(e.message));
-  const showOt = day.otRawMin > 0 && !day.open;
+  // OT ที่ตัดสินแล้วซ่อนไว้ (เปิดดูได้ผ่าน "แก้ไขเวลา") เพื่อให้รายการสั้นลง
+  const showOt = day.otRawMin > 0 && !day.open && (day.otPendingMin > 0 || editing);
 
   if (!editing && !showOt)
     return <button className="mt-1 text-sm text-sky-700 hover:underline" onClick={() => setEditing(true)}>แก้ไขเวลา</button>;
@@ -48,20 +49,19 @@ export function OtControl({ day, run }: { day: Day; run: (p: Promise<unknown>) =
   const min = decided ? day.otApprovedMin : day.otRawMin;
   const post = (minutes: number | null) => run(api("/api/admin/ot", { body: { userId: day.userId, date: day.date, minutes } }));
   return (
-    <form className="flex flex-wrap items-center gap-2"
+    <form className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
       onSubmit={(e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
         post(Number(f.get("h")) * 60 + Number(f.get("m")));
       }}>
       <span className="text-slate-600">OT จริง {hrs(day.otRawMin)}{decided && <> · อนุมัติแล้ว {hrs(day.otApprovedMin)}</>}</span>
-      <span>อนุมัติ</span>
-      <input className="input w-16 py-1" name="h" type="number" min="0" max="24" required
-        defaultValue={Math.floor(min / 60)} aria-label="ชั่วโมง OT ที่อนุมัติ" />
-      <span>ชั่วโมง</span>
-      <input className="input w-16 py-1" name="m" type="number" min="0" max="59" required
-        defaultValue={min % 60} aria-label="นาที OT ที่อนุมัติ" />
-      <span>นาที</span>
+      <span className="whitespace-nowrap">
+        <input className="input w-14 px-2 py-1" name="h" type="number" min="0" max="24" required
+          defaultValue={Math.floor(min / 60)} aria-label="ชั่วโมง OT ที่อนุมัติ" /> ชม.{" "}
+        <input className="input w-14 px-2 py-1" name="m" type="number" min="0" max="59" required
+          defaultValue={min % 60} aria-label="นาที OT ที่อนุมัติ" /> นาที
+      </span>
       <button className="btn py-1">{decided ? "แก้ไข" : "อนุมัติ"}</button>
       {!decided && <button type="button" className="btn-ghost py-1 text-red-600" onClick={() => post(0)}>ปฏิเสธ</button>}
     </form>

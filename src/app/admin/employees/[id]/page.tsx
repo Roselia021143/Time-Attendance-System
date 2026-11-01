@@ -38,7 +38,7 @@ export default function EmployeeDetail({ params }: { params: Promise<{ id: strin
   if (!data) return <main className="p-8 text-center text-slate-400">{err || "กำลังโหลด…"}</main>;
   const t = data.totals;
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4 pb-10">
+    <main className="mx-auto max-w-6xl space-y-4 p-4 pb-10">
       <Link href="/admin" className="text-sm text-sky-700">‹ กลับหน้าสรุป</Link>
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold text-sky-900">
@@ -58,25 +58,28 @@ export default function EmployeeDetail({ params }: { params: Promise<{ id: strin
       </section>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
-      <section className="card">
+      {/* ซ้าย: รายวัน (เลื่อนในกรอบ) · ขวา: การลา + ฟอร์ม (ติดอยู่กับที่บนจอใหญ่) */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <section className="card max-h-[calc(100vh-14rem)] overflow-y-auto py-2">
         <DayList days={data.days} leaves={data.leaves} renderActions={(d) => <AdminDayActions day={d} onChange={load} />} />
       </section>
 
+      <aside className="space-y-4 lg:sticky lg:top-4">
       <section className="card">
         <div className="flex items-center">
           <h2 className="font-semibold text-sky-900">การลา {monthLabel(month)}</h2>
           <button className="btn-ghost ml-auto py-1 text-sm" onClick={() => setLeaveOpen(!leaveOpen)}>+ ลงลาแทน</button>
         </div>
         {!data.leaves.length && <p className="py-3 text-sm text-slate-400">ไม่มีการลาในเดือนนี้</p>}
-        <div className="divide-y divide-sky-100">
+        <div className="max-h-64 divide-y divide-sky-100 overflow-y-auto">
           {data.leaves.map((l) => <LeaveItem key={l.id} l={l} actions={<LeaveDecision l={l} onDone={load} />} />)}
         </div>
       </section>
       {leaveOpen && <LeaveForm endpoint="/api/admin/leaves" userId={Number(id)} onDone={() => { setLeaveOpen(false); load(); }} onCancel={() => setLeaveOpen(false)} />}
 
       <form onSubmit={addSession} className="card flex flex-wrap items-end gap-2">
-        <h2 className="w-full font-semibold text-sky-900">เพิ่มรอบเวลา {monthLabel(month)} (กรณีพนักงานลืมกด)</h2>
-        <label className="text-sm">วันที่
+        <h2 className="w-full font-semibold text-sky-900">เพิ่มรอบเวลา <span className="text-sm font-normal text-slate-500">(กรณีพนักงานลืมกด)</span></h2>
+        <label className="flex w-full flex-col text-sm">วันที่
           <select className="input" name="day" key={month} required
             defaultValue={month === thisMonth() ? new Date(Date.now() + 7 * 3600_000).getUTCDate() : 1}>
             {Array.from({ length: new Date(Date.UTC(+month.slice(0, 4), +month.slice(5, 7), 0)).getUTCDate() }, (_, i) => i + 1).map((d) => (
@@ -84,11 +87,13 @@ export default function EmployeeDetail({ params }: { params: Promise<{ id: strin
             ))}
           </select>
         </label>
-        <label className="text-sm">เข้า<TimeInput className="w-24" name="in" defaultValue="09:00" required /></label>
-        <label className="text-sm">ออก<TimeInput className="w-24" name="out" defaultValue="18:00" allow24 required /></label>
-        <label className="flex-1 text-sm">เหตุผล<input className="input" name="reason" /></label>
-        <button className="btn">เพิ่ม</button>
+        <label className="flex flex-col text-sm">เข้า<TimeInput className="w-24" name="in" defaultValue="09:00" required /></label>
+        <label className="flex flex-col text-sm">ออก<TimeInput className="w-24" name="out" defaultValue="18:00" allow24 required /></label>
+        <label className="w-full text-sm">เหตุผล<input className="input" name="reason" /></label>
+        <button className="btn w-full">เพิ่มรอบเวลา</button>
       </form>
+      </aside>
+      </div>
     </main>
   );
 }
