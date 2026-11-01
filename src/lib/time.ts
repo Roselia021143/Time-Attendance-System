@@ -11,6 +11,9 @@ const hm = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 const overlap = (a: number, b: number, c: number, d: number) => Math.max(0, Math.min(b, d) - Math.max(a, c));
 
 /** "YYYY-MM-DD" + "HH:MM" เวลาไทย -> ms epoch */
+// shortcut: วันหยุดประจำสัปดาห์ fix เป็นวันอาทิตย์, ย้ายไปหน้าตั้งค่าเมื่อทำปฏิทินวันหยุด
+export const isDayOff = (date: string) => new Date(date + "T00:00:00Z").getUTCDay() === 0;
+
 export function toMs(date: string, time: string) {
   const [y, m, d] = date.split("-").map(Number);
   return Date.UTC(y, m - 1, d) + hm(time) * 60_000 - TZ_MS;
@@ -36,7 +39,7 @@ export function computeDay(rules: Rules, sessions: Sess[], otApprovedMin: number
     otApprovedMin: otApprovedMin ?? 0,
     // ยังไม่ตัดสิน และไม่มีรอบลืมออก/ยังเปิดอยู่ -> รออนุมัติ
     otPendingMin: otApprovedMin == null && !open ? otRawMin : 0,
-    lateMin: first != null && first > S ? first - S : 0,
+    lateMin: first != null && first > S && !isDayOff(date) ? first - S : 0, // วันหยุดไม่นับสาย
     forgotten,
     open,
   };

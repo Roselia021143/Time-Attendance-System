@@ -27,6 +27,13 @@ test("session closed at 00:00 next day counts to midnight", () => {
   assert.equal(r.otRawMin, 360);
 });
 
+test("no late on day off (Sunday)", () => {
+  const sun = "2026-11-01";
+  const r = computeDay(R, [{ clockIn: toMs(sun, "10:00"), clockOut: toMs(sun, "15:00") }], null, "2026-11-02", sun);
+  assert.equal(r.lateMin, 0);
+  assert.equal(r.regularMin, 240); // ชั่วโมงยังนับตามกฎปกติ
+});
+
 test("forgotten vs open", () => {
   assert.equal(computeDay(R, [s("09:00", null)], null, "2026-11-03", d).forgotten, true);
   const today = computeDay(R, [s("09:00", null)], null, d, d);

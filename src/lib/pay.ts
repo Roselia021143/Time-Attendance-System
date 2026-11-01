@@ -1,4 +1,6 @@
-import { addDays } from "./time.ts";
+import { addDays, isDayOff } from "./time.ts";
+
+export { isDayOff };
 
 // ---------- ค่าแรง (เงินเป็นสตางค์ทั้งหมด) ----------
 export type Rate = { effectiveFrom: string; rateSatang: number; otRateSatang: number };
@@ -28,8 +30,6 @@ export function sumPay(days: PayDay[], rates: Rate[]) {
 
 // ---------- การลา ----------
 export type LeaveSpan = { fromDate: string; toDate: string; part: "full" | "am" | "pm" };
-// shortcut: วันหยุดประจำสัปดาห์ fix เป็นวันอาทิตย์, ย้ายไปหน้าตั้งค่าเมื่อทำปฏิทินวันหยุด
-export const isDayOff = (date: string) => new Date(date + "T00:00:00Z").getUTCDay() === 0;
 
 /** จำนวนวันลาในช่วง (ตัดด้วย clipFrom..clipTo ได้), ไม่นับวันหยุด, ครึ่งวัน = 0.5 */
 export function leaveDays(l: LeaveSpan, clipFrom = l.fromDate, clipTo = l.toDate) {
