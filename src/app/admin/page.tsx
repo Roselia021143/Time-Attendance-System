@@ -253,8 +253,8 @@ function Employees() {
       <div className="flex">
         <button className="btn ml-auto" onClick={() => setEditing("new")}>+ เพิ่มพนักงาน</button>
       </div>
-      {editing && <EmployeeForm key={editing === "new" ? 0 : editing.id} emp={editing === "new" ? null : editing} onDone={(created) => { setEditing(created ?? null); load(); }} />}
-      {editing && editing !== "new" && <Rates key={editing.id} userId={editing.id} />}
+      {editing && <EmployeeForm key={editing === "new" ? "form-new" : `form-${editing.id}`} emp={editing === "new" ? null : editing} onDone={(created) => { setEditing(created ?? null); load(); }} />}
+      {editing && editing !== "new" && <Rates key={`rates-${editing.id}`} userId={editing.id} />}
       <div className="card divide-y divide-sky-100 p-0">
         {list?.map((e) => (
           <div key={e.id} className="flex flex-wrap items-center gap-2 px-5 py-3">
