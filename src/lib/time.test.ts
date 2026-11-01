@@ -34,6 +34,15 @@ test("no late on day off (Sunday)", () => {
   assert.equal(r.regularMin, 240); // ชั่วโมงยังนับตามกฎปกติ
 });
 
+test("approved leave adjusts late: am -> from break end, full -> none, pm -> normal", () => {
+  const at = (t: string, leave?: "full" | "am" | "pm") => computeDay(R, [s(t, "18:00")], null, "2026-11-03", d, leave).lateMin;
+  assert.equal(at("13:00", "am"), 0);
+  assert.equal(at("13:20", "am"), 20);
+  assert.equal(at("13:00", "full"), 0);
+  assert.equal(at("09:15", "pm"), 15);
+  assert.equal(at("09:15"), 15);
+});
+
 test("forgotten vs open", () => {
   assert.equal(computeDay(R, [s("09:00", null)], null, "2026-11-03", d).forgotten, true);
   const today = computeDay(R, [s("09:00", null)], null, d, d);

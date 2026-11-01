@@ -10,6 +10,10 @@ const minOfDay = (ms: number) => Math.floor(((ms + TZ_MS) % 86_400_000) / 60_000
 const hm = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 const overlap = (a: number, b: number, c: number, d: number) => Math.max(0, Math.min(b, d) - Math.max(a, c));
 
+// วันหยุด / ลาเต็มวัน ไม่นับสาย · ลาครึ่งเช้า เริ่มนับจากเวลาจบพัก
+const lateMin = (first: number | null, start: number, date: string, leave?: string) =>
+  first != null && first > start && !isDayOff(date) && leave !== "full" ? first - start : 0;
+
 /** "YYYY-MM-DD" + "HH:MM" เวลาไทย -> ms epoch */
 // shortcut: วันหยุดประจำสัปดาห์ fix เป็นวันอาทิตย์, ย้ายไปหน้าตั้งค่าเมื่อทำปฏิทินวันหยุด
 export const isDayOff = (date: string) => new Date(date + "T00:00:00Z").getUTCDay() === 0;
@@ -19,7 +23,8 @@ export function toMs(date: string, time: string) {
   return Date.UTC(y, m - 1, d) + hm(time) * 60_000 - TZ_MS;
 }
 
-export function computeDay(rules: Rules, sessions: Sess[], otApprovedMin: number | null, today: string, date: string) {
+/** leave = ส่วนของวันที่ลา (อนุมัติแล้ว) ใช้ปรับการนับมาสาย */
+export function computeDay(rules: Rules, sessions: Sess[], otApprovedMin: number | null, today: string, date: string, leave?: "full" | "am" | "pm") {
   const S = hm(rules.workStart), E = hm(rules.workEnd), bS = hm(rules.breakStart), bE = hm(rules.breakEnd);
   let regularMin = 0, otRawMin = 0, forgotten = false, open = false;
   for (const s of sessions) {
@@ -39,7 +44,7 @@ export function computeDay(rules: Rules, sessions: Sess[], otApprovedMin: number
     otApprovedMin: otApprovedMin ?? 0,
     // ยังไม่ตัดสิน และไม่มีรอบลืมออก/ยังเปิดอยู่ -> รออนุมัติ
     otPendingMin: otApprovedMin == null && !open ? otRawMin : 0,
-    lateMin: first != null && first > S && !isDayOff(date) ? first - S : 0, // วันหยุดไม่นับสาย
+    lateMin: lateMin(first, leave === "am" ? bE : S, date, leave),
     forgotten,
     open,
   };

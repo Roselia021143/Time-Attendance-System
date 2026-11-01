@@ -1,8 +1,8 @@
-import { and, between, eq, inArray, isNull } from "drizzle-orm";
+import { and, between, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { db, schema } from "./db";
 import { bkkDate, computeDay, toMs, type Rules } from "./time";
 
-const { workSessions, dayRecords, settings } = schema;
+const { workSessions, dayRecords, settings, leaveRequests } = schema;
 
 export const today = () => bkkDate(Date.now());
 
@@ -29,13 +29,20 @@ export type Day = ReturnType<typeof computeDay> & {
 export async function getDays(userIds: number[], from: string, to: string): Promise<Day[]> {
   if (!userIds.length) return [];
   const d = db();
-  const [ws, recs] = await Promise.all([
+  const [ws, recs, leaves] = await Promise.all([
     d.select().from(workSessions)
       .where(and(inArray(workSessions.userId, userIds), between(workSessions.workDate, from, to)))
       .orderBy(workSessions.clockIn),
     d.select().from(dayRecords)
       .where(and(inArray(dayRecords.userId, userIds), between(dayRecords.workDate, from, to))),
+    // ลาที่อนุมัติแล้ว ใช้ปรับการนับมาสาย
+    d.select().from(leaveRequests).where(and(
+      inArray(leaveRequests.userId, userIds), eq(leaveRequests.status, "approved"),
+      lte(leaveRequests.fromDate, to), gte(leaveRequests.toDate, from),
+    )),
   ]);
+  const leaveOn = (userId: number, date: string) =>
+    leaves.find((l) => l.userId === userId && l.fromDate <= date && date <= l.toDate)?.part;
   const rec = new Map(recs.map((r) => [`${r.userId}|${r.workDate}`, r]));
   const groups = new Map<string, typeof ws>();
   for (const s of ws) {
@@ -51,7 +58,7 @@ export async function getDays(userIds: number[], from: string, to: string): Prom
       userId: list[0].userId,
       date: list[0].workDate,
       sessions: list.map(({ id, clockIn, clockOut, edited }) => ({ id, clockIn, clockOut, edited })),
-      ...computeDay(rules, list, r?.otApprovedMin ?? null, t, list[0].workDate),
+      ...computeDay(rules, list, r?.otApprovedMin ?? null, t, list[0].workDate, leaveOn(list[0].userId, list[0].workDate)),
     };
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
