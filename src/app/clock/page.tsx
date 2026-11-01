@@ -1,4 +1,5 @@
 "use client";
+import { CalendarOff, CalendarPlus, ChevronLeft, ChevronRight, History, KeyRound, LogIn, LogOut, Save } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import DayList from "@/components/DayList";
 import Modal from "@/components/Modal";
@@ -71,8 +72,8 @@ export default function Clock() {
           <h1 className="truncate text-lg font-semibold text-sky-900">{me.user.firstName} {me.user.lastName}</h1>
         </div>
         <div className="flex shrink-0 gap-1.5">
-          <button className="btn-ghost whitespace-nowrap px-2.5 text-xs" onClick={() => setPwOpen(true)}>เปลี่ยนรหัส</button>
-          <button className="btn-ghost whitespace-nowrap px-2.5 text-xs" onClick={logout}>ออกจากระบบ</button>
+          <button className="btn-ghost whitespace-nowrap px-2.5 text-xs" aria-label="เปลี่ยนรหัสผ่าน" onClick={() => setPwOpen(true)}><KeyRound /><span className="hidden sm:inline">เปลี่ยนรหัส</span></button>
+          <button className="btn-ghost whitespace-nowrap px-2.5 text-xs" aria-label="ออกจากระบบ" onClick={logout}><LogOut /><span className="hidden sm:inline">ออกจากระบบ</span></button>
         </div>
       </header>
 
@@ -87,14 +88,14 @@ export default function Clock() {
               {new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", dateStyle: "full" }).format(now)}
             </p>
             <p className="mt-3 text-sm">
-              {working ? <span className="text-emerald-700">● กำลังทำงาน ตั้งแต่ {timeOf(me.openSince)} น.</span> : <span className="text-slate-500">ยังไม่ได้เข้างาน</span>}
+              {working ? <span className="text-emerald-700"><span className="mr-1 inline-block size-2 animate-pulse rounded-full bg-emerald-500 align-middle" />กำลังทำงาน ตั้งแต่ {timeOf(me.openSince)} น.</span> : <span className="text-slate-500">ยังไม่ได้เข้างาน</span>}
             </p>
             <button
               onClick={clock}
               disabled={busy}
               className={`mt-4 h-20 w-full rounded-2xl text-2xl font-semibold text-white shadow-lg transition active:scale-[.98] disabled:opacity-60 ${working ? "bg-slate-700 hover:bg-slate-800" : "bg-sky-600 hover:bg-sky-700"}`}
             >
-              {busy ? "…" : working ? "ออกงาน" : "เข้างาน"}
+              <span className="inline-flex items-center justify-center gap-3">{busy ? "…" : working ? <><LogOut size={28} />ออกงาน</> : <><LogIn size={28} />เข้างาน</>}</span>
             </button>
             {msg && <p role="status" className="mt-3 text-sm text-sky-700">{msg}</p>}
           </section>
@@ -109,8 +110,8 @@ export default function Clock() {
                   </button>
                 ))}
               </div>
-              <button className="btn-ghost ml-auto px-2 py-1" aria-label="ก่อนหน้า" onClick={() => setOffset(offset + 1)}>‹</button>
-              <button className="btn-ghost px-2 py-1" aria-label="ถัดไป" disabled={offset === 0} onClick={() => setOffset(offset - 1)}>›</button>
+              <button className="btn-ghost ml-auto px-2 py-1" aria-label="ก่อนหน้า" onClick={() => setOffset(offset + 1)}><ChevronLeft /></button>
+              <button className="btn-ghost px-2 py-1" aria-label="ถัดไป" disabled={offset === 0} onClick={() => setOffset(offset - 1)}><ChevronRight /></button>
             </div>
             {sum && t && (
               <>
@@ -142,16 +143,16 @@ export default function Clock() {
         {/* ขวา: แท็บ ประวัติ / การลา */}
         <section className="card p-0">
           <div className="flex items-center gap-1 border-b border-sky-100 p-2">
-            {([["history", "ประวัติลงเวลา"], ["leaves", "การลา"]] as const).map(([k, label]) => (
+            {([["history", "ประวัติลงเวลา", History], ["leaves", "การลา", CalendarOff]] as const).map(([k, label, Icon]) => (
               <button key={k} onClick={() => { setTab(k); setShowAll(wide); }}
-                className={`rounded-lg px-4 py-2 text-sm ${tab === k ? "bg-sky-600 font-medium text-white" : "text-slate-600 hover:bg-sky-50"}`}>
-                {label}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm ${tab === k ? "bg-sky-600 font-medium text-white" : "text-slate-600 hover:bg-sky-50"}`}>
+                <Icon size={16} />{label}
                 {k === "leaves" && pendingLeaves > 0 && (
                   <span className={`badge ml-1.5 ${tab === k ? "bg-white text-sky-700" : "bg-sky-100 text-sky-700"}`}>รอ {pendingLeaves}</span>
                 )}
               </button>
             ))}
-            <button className="btn ml-auto py-1.5 text-sm" onClick={() => setLeaveOpen(true)}>+ ขอลา</button>
+            <button className="btn ml-auto py-1.5 text-sm" onClick={() => setLeaveOpen(true)}><CalendarPlus />ขอลา</button>
           </div>
 
           <div className="px-5 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto">
@@ -227,7 +228,7 @@ function PasswordForm({ onDone }: { onDone: () => void }) {
       <input className="input" name="next" type="password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)" aria-label="รหัสผ่านใหม่" autoComplete="new-password" minLength={6} required />
       <input className="input" name="confirm" type="password" placeholder="ยืนยันรหัสผ่านใหม่" aria-label="ยืนยันรหัสผ่านใหม่" autoComplete="new-password" required />
       {msg && <p className="text-sm text-red-600">{msg}</p>}
-      <button className="btn w-full">บันทึก</button>
+      <button className="btn w-full"><Save />บันทึก</button>
     </form>
   );
 }

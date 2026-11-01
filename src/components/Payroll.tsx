@@ -1,4 +1,5 @@
 "use client";
+import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, baht, dateLabel, hrs, monthLabel, type Pay, type Profile } from "@/lib/client";
 import { matchUser, SearchBox } from "./SearchBox";
@@ -32,12 +33,12 @@ export default function Payroll() {
               </button>
             ))}
           </div>
-          <button className="btn-ghost px-2 py-1" aria-label="ก่อนหน้า" onClick={() => setOffset(offset + 1)}>‹</button>
+          <button className="btn-ghost px-2 py-1" aria-label="ก่อนหน้า" onClick={() => setOffset(offset + 1)}><ChevronLeft /></button>
           <span className="min-w-36 text-center font-medium">{data && periodLabel(period, data.from, data.to)}</span>
-          <button className="btn-ghost px-2 py-1" aria-label="ถัดไป" disabled={offset === 0} onClick={() => setOffset(offset - 1)}>›</button>
+          <button className="btn-ghost px-2 py-1" aria-label="ถัดไป" disabled={offset === 0} onClick={() => setOffset(offset - 1)}><ChevronRight /></button>
           <div className="ml-auto flex gap-2">
             <SearchBox value={q} onChange={setQ} />
-            <a className="btn text-sm" href={`/api/admin/payroll?${qs}&format=csv`}>CSV</a>
+            <a className="btn text-sm" href={`/api/admin/payroll?${qs}&format=csv`}><Download />CSV</a>
           </div>
         </div>
         <div className="max-h-[60vh] overflow-auto">
@@ -103,7 +104,7 @@ function YearBreakdown({ user, offset, onClose }: { user: Profile; offset: numbe
     <div className="card min-w-0 space-y-2 xl:sticky xl:top-4">
       <div className="flex items-center">
         <h2 className="font-semibold text-sky-900">ค่าแรงรายเดือน · {user.firstName} {user.lastName}</h2>
-        <button className="btn-ghost ml-auto py-1 text-sm" onClick={onClose}>ปิด</button>
+        <button className="btn-ghost ml-auto px-2 py-1" aria-label="ปิด" onClick={onClose}><X /></button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">

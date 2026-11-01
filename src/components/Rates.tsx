@@ -1,4 +1,5 @@
 "use client";
+import { Save, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import DateInput from "./DateInput";
 import { api, baht, dateLabel, type Rate } from "@/lib/client";
@@ -34,7 +35,7 @@ export default function Rates({ userId }: { userId: number }) {
           <li key={r.id} className={`flex items-center gap-2 ${i ? "text-slate-500" : "font-medium text-sky-900"}`}>
             ตั้งแต่ {dateLabel(r.effectiveFrom)} {Number(r.effectiveFrom.slice(0, 4)) + 543}: ปกติ {baht(r.rateSatang)}/ชม. · OT {baht(r.otRateSatang)}/ชม.
             {i === 0 && <span className="badge bg-sky-100 text-sky-700">ล่าสุด</span>}
-            <button type="button" className="ml-auto text-xs text-red-600 hover:underline" onClick={() => remove(r)}>ลบ</button>
+            <button type="button" className="ml-auto rounded-lg p-1 text-red-600 hover:bg-red-50" aria-label="ลบอัตรานี้" title="ลบ" onClick={() => remove(r)}><Trash2 size={16} /></button>
           </li>
         ))}
       </ul>
@@ -42,7 +43,7 @@ export default function Rates({ userId }: { userId: number }) {
         <label className="flex flex-col">ค่าแรงปกติ (บาท/ชม.)<input className="input w-32" name="rate" type="number" min="0.01" step="0.01" required /></label>
         <label className="flex flex-col">ค่า OT (บาท/ชม.)<input className="input w-32" name="otRate" type="number" min="0.01" step="0.01" required /></label>
         <div><span className="block">มีผลตั้งแต่</span><DateInput name="effectiveFrom" label="มีผลตั้งแต่" /></div>
-        <button className="btn">ตั้งค่าแรง</button>
+        <button className="btn"><Save />ตั้งค่าแรง</button>
       </form>
       {err && <p className="text-sm text-red-600">{err}</p>}
     </div>

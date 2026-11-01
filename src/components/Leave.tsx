@@ -1,4 +1,5 @@
 "use client";
+import { Ban, Check, Send, X } from "lucide-react";
 import { useState } from "react";
 import DateInput from "./DateInput";
 import { api, LEAVE_PART, LEAVE_STATUS, LEAVE_TYPE, leaveRange, type Leave } from "@/lib/client";
@@ -51,7 +52,7 @@ export function LeaveForm({ endpoint, userId, onDone, onCancel }: { endpoint: st
       <p className="text-xs text-slate-500">ไม่นับวันอาทิตย์ · การลาไม่ได้รับค่าแรง</p>
       {err && <p role="alert" className="text-sm text-red-600">{err}</p>}
       <div className="flex gap-2">
-        <button className="btn" disabled={busy}>{userId ? "บันทึกการลา" : "ส่งคำขอลา"}</button>
+        <button className="btn" disabled={busy}><Send />{userId ? "บันทึกการลา" : "ส่งคำขอลา"}</button>
         {onCancel && <button type="button" className="btn-ghost" onClick={onCancel}>ยกเลิก</button>}
       </div>
     </form>
@@ -88,13 +89,13 @@ export function LeaveDecision({ l, onDone }: { l: Leave; onDone: () => void }) {
   const act = (action: string) =>
     api(`/api/admin/leaves/${l.id}/decision`, { body: { action, note } }).then(onDone).catch((e) => setErr(e.message));
   if (l.status === "approved")
-    return <button className="btn-ghost py-1 text-sm text-red-600" onClick={() => confirm("ยกเลิกการลานี้?") && act("cancel")}>ยกเลิกการลา</button>;
+    return <button className="btn-ghost py-1 text-sm text-red-600" onClick={() => confirm("ยกเลิกการลานี้?") && act("cancel")}><Ban />ยกเลิกการลา</button>;
   if (l.status !== "pending") return null;
   return (
     <div className="flex flex-wrap items-center gap-2 pt-1">
       <input className="input w-56 flex-1 py-1 text-sm" placeholder="หมายเหตุ (ไม่บังคับ)" aria-label="หมายเหตุ" value={note} onChange={(e) => setNote(e.target.value)} />
-      <button className="btn py-1" onClick={() => act("approve")}>อนุมัติ</button>
-      <button className="btn-ghost py-1 text-red-600" onClick={() => act("reject")}>ไม่อนุมัติ</button>
+      <button className="btn py-1" onClick={() => act("approve")}><Check />อนุมัติ</button>
+      <button className="btn-ghost py-1 text-red-600" onClick={() => act("reject")}><X />ไม่อนุมัติ</button>
       {err && <p className="w-full text-sm text-red-600">{err}</p>}
     </div>
   );

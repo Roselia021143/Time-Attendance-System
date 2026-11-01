@@ -1,4 +1,5 @@
 "use client";
+import { AlarmClock, ArrowRight, Briefcase, CalendarClock, ChartColumn, CheckCheck, ChevronLeft, ChevronRight, Download, Inbox, LogOut, Moon, Save, Phone, Settings as SettingsIcon, Sun, UserPlus, UserX, Users, Wallet } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { OtControl } from "@/components/AdminDayActions";
@@ -10,6 +11,7 @@ import { LeaveDecision, LeaveItem } from "@/components/Leave";
 import { api, baht, dateLabel, hrs, LEAVE_TYPE, logout, monthLabel, shiftMonth, thisMonth, timeOf, type Day, type Leave, type Profile, type Rate, type Totals } from "@/lib/client";
 
 const TABS = { today: "วันนี้", summary: "สรุปรายเดือน", payroll: "ค่าแรง", pending: "รอดำเนินการ", employees: "พนักงาน", settings: "ตั้งค่า" } as const;
+const TAB_ICON = { today: Sun, summary: ChartColumn, payroll: Wallet, pending: Inbox, employees: Users, settings: SettingsIcon };
 type Tab = keyof typeof TABS;
 
 export default function Admin() {
@@ -26,18 +28,21 @@ export default function Admin() {
     <main className="mx-auto max-w-7xl space-y-4 p-4 pb-10">
       <header className="flex items-center gap-3">
         <h1 className="text-xl font-semibold text-sky-900">แดชบอร์ดเจ้าของร้าน</h1>
-        <button className="btn-ghost ml-auto text-sm" onClick={logout}>ออกจากระบบ</button>
+        <button className="btn-ghost ml-auto text-sm" aria-label="ออกจากระบบ" onClick={logout}><LogOut /><span className="hidden sm:inline">ออกจากระบบ</span></button>
       </header>
       <nav className="flex gap-1 overflow-x-auto rounded-xl bg-white p-1 ring-1 ring-sky-100">
-        {(Object.keys(TABS) as Tab[]).map((k) => (
+        {(Object.keys(TABS) as Tab[]).map((k) => {
+          const Icon = TAB_ICON[k];
+          return (
           <button key={k} onClick={() => setTab(k)}
-            className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm ${tab === k ? "bg-sky-600 font-medium text-white" : "text-slate-600 hover:bg-sky-50"}`}>
-            {TABS[k]}
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm ${tab === k ? "bg-sky-600 font-medium text-white" : "text-slate-600 hover:bg-sky-50"}`}>
+            <Icon size={16} />{TABS[k]}
             {k === "pending" && pending > 0 && (
-              <span className={`badge ml-1.5 ${tab === k ? "bg-white text-sky-700" : "bg-red-500 text-white"}`}>{pending}</span>
+              <span className={`badge ${tab === k ? "bg-white text-sky-700" : "bg-red-500 text-white"}`}>{pending}</span>
             )}
           </button>
-        ))}
+          );
+        })}
       </nav>
       {tab === "today" && <Today pending={pending} goPending={() => setTab("pending")} />}
       {tab === "summary" && <Summary />}
@@ -80,11 +85,11 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
   const done = data.rows.filter((r) => r.day && !r.day.open);
   const late = data.rows.filter((r) => r.day && r.day.lateMin > 0).length;
 
-  const stats: [string, number, string, (() => void)?][] = [
-    ["กำลังทำงาน", working.length, "bg-sky-600 text-white"],
-    [data.dayOff ? "หยุด (วันหยุด)" : "ยังไม่เข้างาน", absent.length, pastStart && absent.length ? "bg-red-50 text-red-700" : "bg-white text-sky-900"],
-    ["มาสายวันนี้", late, late ? "bg-amber-50 text-amber-800" : "bg-white text-sky-900"],
-    ["รอดำเนินการ", pending, pending ? "bg-sky-50 text-sky-800" : "bg-white text-sky-900", goPending],
+  const stats: [string, number, string, typeof Sun, (() => void)?][] = [
+    ["กำลังทำงาน", working.length, "bg-sky-600 text-white", Briefcase],
+    [data.dayOff ? "หยุด (วันหยุด)" : "ยังไม่เข้างาน", absent.length, pastStart && absent.length ? "bg-red-50 text-red-700" : "bg-white text-sky-900", data.dayOff ? Moon : UserX],
+    ["มาสายวันนี้", late, late ? "bg-amber-50 text-amber-800" : "bg-white text-sky-900", AlarmClock],
+    ["รอดำเนินการ", pending, pending ? "bg-sky-50 text-sky-800" : "bg-white text-sky-900", Inbox, goPending],
   ];
 
   return (
@@ -95,10 +100,10 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
         {" "}· อัปเดตอัตโนมัติทุก 1 นาที
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {stats.map(([label, n, cls, onClick]) => (
+        {stats.map(([label, n, cls, Icon, onClick]) => (
           <button key={label} onClick={onClick} disabled={!onClick}
             className={`rounded-2xl p-4 text-left shadow-sm ring-1 ring-sky-100 ${cls} ${onClick ? "hover:brightness-95" : "cursor-default"}`}>
-            <p className="text-sm opacity-80">{label}</p>
+            <p className="flex items-center gap-1.5 text-sm opacity-80"><Icon size={16} />{label}</p>
             <p className="text-3xl font-semibold">{n}</p>
           </button>
         ))}
@@ -137,7 +142,7 @@ function Group({ title, rows, alert }: { title: string; rows: TodayData["rows"];
             <span className="ml-auto text-sm text-slate-500">
               {day
                 ? `เข้า ${timeOf(day.sessions[0].clockIn)}${day.open ? "" : ` · ออก ${timeOf(day.sessions.at(-1)!.clockOut)} · ${hrs(day.regularMin)}`}`
-                : !leave && user.phone && <a className="text-sky-700" href={`tel:${user.phone}`}>โทร {user.phone}</a>}
+                : !leave && user.phone && <a className="inline-flex items-center gap-1 text-sky-700" href={`tel:${user.phone}`}><Phone size={14} />{user.phone}</a>}
             </span>
           </li>
         ))}
@@ -157,15 +162,15 @@ function Summary() {
   return (
     <section className="card space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <button className="btn-ghost px-2 py-1" aria-label="เดือนก่อน" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
+        <button className="btn-ghost px-2 py-1" aria-label="เดือนก่อน" onClick={() => setMonth(shiftMonth(month, -1))}><ChevronLeft /></button>
         <span className="w-36 text-center font-medium">{monthLabel(month)}</span>
-        <button className="btn-ghost px-2 py-1" aria-label="เดือนถัดไป" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+        <button className="btn-ghost px-2 py-1" aria-label="เดือนถัดไป" onClick={() => setMonth(shiftMonth(month, 1))}><ChevronRight /></button>
         <label className="ml-2 flex items-center gap-1 text-sm text-slate-500">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> แสดงพนักงานที่ปิดแล้ว
         </label>
         <div className="ml-auto flex gap-2">
           <SearchBox value={q} onChange={setQ} />
-          <a className="btn text-sm" href={`/api/admin/summary?month=${month}&format=csv`}>CSV</a>
+          <a className="btn text-sm" href={`/api/admin/summary?month=${month}&format=csv`}><Download />CSV</a>
         </div>
       </div>
       <div className="max-h-[65vh] overflow-auto">
@@ -240,7 +245,7 @@ function Pending({ onCount }: { onCount: (n: number) => void }) {
               run(ot.reduce((p, d) => p.then(() => api("/api/admin/ot", { body: { userId: d.userId, date: d.date, minutes: d.otRawMin } })), Promise.resolve() as Promise<unknown>)
                 .finally(() => setBulk(false)));
             }}>
-            {bulk ? "กำลังอนุมัติ…" : "อนุมัติทั้งหมดตามจริง"}
+            <CheckCheck />{bulk ? "กำลังอนุมัติ…" : "อนุมัติทั้งหมดตามจริง"}
           </button>
         )}
       </div>
@@ -285,7 +290,7 @@ function Employees() {
         <div className="flex items-center gap-2 border-b border-sky-100 p-3">
           <SearchBox value={q} onChange={setQ} />
           <span className="text-sm text-slate-400">{list?.length ?? 0} คน</span>
-          <button className="btn ml-auto py-1.5 text-sm" onClick={() => setEditing("new")}>+ เพิ่ม</button>
+          <button className="btn ml-auto py-1.5 text-sm" onClick={() => setEditing("new")}><UserPlus />เพิ่ม</button>
         </div>
         <div className="max-h-[70vh] divide-y divide-sky-50 overflow-y-auto">
           {shown?.map((e) => (
@@ -313,7 +318,7 @@ function Employees() {
         {editing ? (
           <>
             {editing !== "new" && (
-              <Link className="text-sm text-sky-700 hover:underline" href={`/admin/employees/${editing.id}`}>ดูเวลางานและการลาของ {editing.firstName} →</Link>
+              <Link className="inline-flex items-center gap-1 text-sm text-sky-700 hover:underline" href={`/admin/employees/${editing.id}`}><CalendarClock size={16} />ดูเวลางานและการลาของ {editing.firstName}<ArrowRight size={14} /></Link>
             )}
             <EmployeeForm key={editing === "new" ? "form-new" : `form-${editing.id}`} emp={editing === "new" ? null : editing} onDone={(created) => { setEditing(created ?? null); load(); }} />
             {editing !== "new" && <Rates key={`rates-${editing.id}`} userId={editing.id} />}
@@ -358,7 +363,7 @@ function EmployeeForm({ emp, onDone }: { emp: Profile | null; onDone: (created?:
       </label>
       {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
       <div className="flex gap-2 sm:col-span-2">
-        <button className="btn">บันทึก</button>
+        <button className="btn"><Save />บันทึก</button>
         <button type="button" className="btn-ghost" onClick={() => onDone()}>{emp ? "ปิด" : "ยกเลิก"}</button>
         {emp && (
           <button type="button" className={`btn-ghost ml-auto ${emp.active ? "text-red-600" : ""}`} onClick={toggle}>
@@ -391,7 +396,7 @@ function Settings() {
       ))}
       <p className="text-sm text-slate-500 sm:col-span-2">การเปลี่ยนแปลงไม่กระทบวันที่ลงเวลาไปแล้ว</p>
       {msg && <p className="text-sm text-sky-700 sm:col-span-2">{msg}</p>}
-      <button className="btn sm:col-span-2">บันทึก</button>
+      <button className="btn sm:col-span-2"><Save />บันทึก</button>
     </form>
   );
 }

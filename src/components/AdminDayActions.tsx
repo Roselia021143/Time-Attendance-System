@@ -1,4 +1,5 @@
 "use client";
+import { Check, Pencil, Save, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { api, hrs, type Day } from "@/lib/client";
 import TimeInput from "./TimeInput";
@@ -14,12 +15,12 @@ export default function AdminDayActions({ day, onChange }: { day: Day; onChange:
   const showOt = day.otRawMin > 0 && !day.open && (day.otPendingMin > 0 || editing);
 
   if (!editing && !showOt)
-    return <button className="mt-1 text-sm text-sky-700 hover:underline" onClick={() => setEditing(true)}>แก้ไขเวลา</button>;
+    return <button className="mt-1 inline-flex items-center gap-1 text-sm text-sky-700 hover:underline" onClick={() => setEditing(true)}><Pencil size={14} />แก้ไขเวลา</button>;
 
   return (
     <div className="mt-2 space-y-2 rounded-xl bg-sky-50/60 p-3 text-sm">
       {showOt && <OtControl day={day} run={run} />}
-      {!editing && <button className="text-sky-700 hover:underline" onClick={() => setEditing(true)}>แก้ไขเวลา</button>}
+      {!editing && <button className="inline-flex items-center gap-1 text-sky-700 hover:underline" onClick={() => setEditing(true)}><Pencil size={14} />แก้ไขเวลา</button>}
       {editing && day.sessions.map((s) => (
         <form key={s.id} className="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
@@ -31,10 +32,10 @@ export default function AdminDayActions({ day, onChange }: { day: Day; onChange:
           <span>–</span>
           <TimeInput className="w-24 py-1" name="out" defaultValue={hhmm(s.clockOut)} aria-label="เวลาออก" allow24 required />
           <input className="input w-40 flex-1 py-1" name="reason" placeholder="เหตุผล (ไม่บังคับ)" aria-label="เหตุผล" />
-          <button className="btn py-1">บันทึก</button>
-          <button type="button" className="btn-ghost py-1 text-red-600"
+          <button className="btn py-1"><Save />บันทึก</button>
+          <button type="button" className="btn-ghost px-2 py-1 text-red-600" aria-label="ลบรอบนี้" title="ลบรอบนี้"
             onClick={() => confirm("ลบรอบนี้?") && run(api(`/api/admin/sessions/${s.id}?reason=`, { method: "DELETE" }))}>
-            ลบ
+            <Trash2 />
           </button>
         </form>
       ))}
@@ -62,8 +63,8 @@ export function OtControl({ day, run }: { day: Day; run: (p: Promise<unknown>) =
         <input className="input w-14 px-2 py-1" name="m" type="number" min="0" max="59" required
           defaultValue={min % 60} aria-label="นาที OT ที่อนุมัติ" /> นาที
       </span>
-      <button className="btn py-1">{decided ? "แก้ไข" : "อนุมัติ"}</button>
-      {!decided && <button type="button" className="btn-ghost py-1 text-red-600" onClick={() => post(0)}>ปฏิเสธ</button>}
+      <button className="btn py-1">{decided ? <><Pencil />แก้ไข</> : <><Check />อนุมัติ</>}</button>
+      {!decided && <button type="button" className="btn-ghost py-1 text-red-600" onClick={() => post(0)}><X />ปฏิเสธ</button>}
     </form>
   );
 }

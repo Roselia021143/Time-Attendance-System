@@ -1,4 +1,5 @@
 "use client";
+import { Clock, LogIn } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/client";
 
@@ -24,7 +25,7 @@ export default function Login() {
     <main className="flex min-h-dvh items-center justify-center p-4">
       <form onSubmit={submit} className="card w-full max-w-sm space-y-4">
         <div className="text-center">
-          <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-sky-600 text-2xl text-white">⏱</div>
+          <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-sky-600 text-white"><Clock size={30} /></div>
           <h1 className="text-xl font-semibold text-sky-900">ลงเวลาเข้า-ออกงาน</h1>
           <p className="text-sm text-slate-500">เข้าสู่ระบบเพื่อเริ่มใช้งาน</p>
         </div>
@@ -37,7 +38,7 @@ export default function Login() {
           <input className="input" id="password" name="password" type="password" autoComplete="current-password" required />
         </div>
         {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        <button className="btn w-full py-3" disabled={busy}>{busy ? "กำลังเข้าสู่ระบบ…" : "เข้าสู่ระบบ"}</button>
+        <button className="btn w-full py-3" disabled={busy}><LogIn />{busy ? "กำลังเข้าสู่ระบบ…" : "เข้าสู่ระบบ"}</button>
       </form>
     </main>
   );

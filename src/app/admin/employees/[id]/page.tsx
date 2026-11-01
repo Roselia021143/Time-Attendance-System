@@ -1,4 +1,5 @@
 "use client";
+import { ArrowLeft, CalendarPlus, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminDayActions from "@/components/AdminDayActions";
@@ -39,15 +40,15 @@ export default function EmployeeDetail({ params }: { params: Promise<{ id: strin
   const t = data.totals;
   return (
     <main className="mx-auto max-w-6xl space-y-4 p-4 pb-10">
-      <Link href="/admin" className="text-sm text-sky-700">‹ กลับหน้าสรุป</Link>
+      <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-sky-700 hover:underline"><ArrowLeft size={16} />กลับหน้าแดชบอร์ด</Link>
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold text-sky-900">
           {data.user.firstName} {data.user.lastName} {data.user.nickname && <span className="text-slate-500">({data.user.nickname})</span>}
         </h1>
         <div className="ml-auto flex items-center gap-1">
-          <button className="btn-ghost px-2 py-1" aria-label="เดือนก่อน" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
+          <button className="btn-ghost px-2 py-1" aria-label="เดือนก่อน" onClick={() => setMonth(shiftMonth(month, -1))}><ChevronLeft /></button>
           <span className="w-36 text-center font-medium">{monthLabel(month)}</span>
-          <button className="btn-ghost px-2 py-1" aria-label="เดือนถัดไป" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+          <button className="btn-ghost px-2 py-1" aria-label="เดือนถัดไป" onClick={() => setMonth(shiftMonth(month, 1))}><ChevronRight /></button>
         </div>
       </header>
 
@@ -68,7 +69,7 @@ export default function EmployeeDetail({ params }: { params: Promise<{ id: strin
       <section className="card">
         <div className="flex items-center">
           <h2 className="font-semibold text-sky-900">การลา {monthLabel(month)}</h2>
-          <button className="btn-ghost ml-auto py-1 text-sm" onClick={() => setLeaveOpen(!leaveOpen)}>+ ลงลาแทน</button>
+          <button className="btn-ghost ml-auto py-1 text-sm" onClick={() => setLeaveOpen(!leaveOpen)}><CalendarPlus />ลงลาแทน</button>
         </div>
         {!data.leaves.length && <p className="py-3 text-sm text-slate-400">ไม่มีการลาในเดือนนี้</p>}
         <div className="max-h-64 divide-y divide-sky-100 overflow-y-auto">
@@ -90,7 +91,7 @@ export default function EmployeeDetail({ params }: { params: Promise<{ id: strin
         <label className="flex flex-col text-sm">เข้า<TimeInput className="w-24" name="in" defaultValue="09:00" required /></label>
         <label className="flex flex-col text-sm">ออก<TimeInput className="w-24" name="out" defaultValue="18:00" allow24 required /></label>
         <label className="w-full text-sm">เหตุผล<input className="input" name="reason" /></label>
-        <button className="btn w-full">เพิ่มรอบเวลา</button>
+        <button className="btn w-full"><Plus />เพิ่มรอบเวลา</button>
       </form>
       </aside>
       </div>

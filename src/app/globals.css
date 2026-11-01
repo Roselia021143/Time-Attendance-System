@@ -6,9 +6,10 @@
 
 @layer components {
   .card { @apply rounded-2xl bg-white p-5 shadow-sm ring-1 ring-sky-100; }
-  .btn { @apply inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2 font-medium text-white transition hover:bg-sky-700 disabled:opacity-50; }
-  .btn-ghost { @apply inline-flex items-center justify-center rounded-xl px-3 py-2 font-medium text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50 disabled:opacity-50; }
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-xl bg-sky-600 px-4 py-2 font-medium text-white transition hover:bg-sky-700 disabled:opacity-50; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 font-medium text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-50 disabled:opacity-50; }
   .input { @apply w-full rounded-xl border border-sky-200 bg-white px-3 py-2 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200; }
   .label { @apply mb-1 block text-sm font-medium text-slate-600; }
+  .btn svg, .btn-ghost svg { @apply size-4 shrink-0; }
   .badge { @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium; }
 }
