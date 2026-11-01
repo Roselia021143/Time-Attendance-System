@@ -11,7 +11,7 @@ export async function api<T = unknown>(path: string, init?: { method?: string; b
     throw new Error("กรุณาเข้าสู่ระบบ");
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error(data.error ?? "เกิดข้อผิดพลาด");
+  if (!res.ok) throw new Error(data.error ?? `เกิดข้อผิดพลาด (${res.status}) — ถ้าเพิ่งอัปเดตระบบ ให้รัน npm run db:migrate:local`);
   return data;
 }
 
