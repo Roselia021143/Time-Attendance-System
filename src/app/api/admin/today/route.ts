@@ -3,7 +3,7 @@ import { auth, publicUser } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { currentRules, getDays, today } from "@/lib/report";
 import { activeLeaves } from "@/lib/leave";
-import { leaveCovers } from "@/lib/pay";
+import { isDayOff } from "@/lib/pay";
 
 const { users } = schema;
 
@@ -19,10 +19,11 @@ export async function GET(req: Request) {
   return Response.json({
     date: t,
     rules: await currentRules(),
+    dayOff: isDayOff(t),
     rows: emps.map((e) => ({
       user: publicUser(e),
       day: days.find((d) => d.userId === e.id) ?? null,
-      leave: leaves.find((l) => l.userId === e.id && leaveCovers(l, t)) ?? null,
+      leave: leaves.find((l) => l.userId === e.id && l.fromDate <= t && t <= l.toDate) ?? null,
     })),
   });
 }

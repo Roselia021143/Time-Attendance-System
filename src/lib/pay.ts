@@ -45,4 +45,3 @@ export function leaveOverlaps(a: LeaveSpan, b: LeaveSpan) {
   return !(halves && a.fromDate === a.toDate && b.fromDate === b.toDate);
 }
 
-export const leaveCovers = (l: LeaveSpan, date: string) => l.fromDate <= date && date <= l.toDate && !isDayOff(date);

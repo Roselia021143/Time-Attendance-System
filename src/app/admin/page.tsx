@@ -60,7 +60,7 @@ function Working({ since }: { since: number | null | undefined }) {
   );
 }
 
-type TodayData = { date: string; rules: { workStart: string }; rows: { user: Profile; day: Day | null; leave: Leave | null }[] };
+type TodayData = { date: string; dayOff: boolean; rules: { workStart: string }; rows: { user: Profile; day: Day | null; leave: Leave | null }[] };
 
 function Today({ pending, goPending }: { pending: number; goPending: () => void }) {
   const [data, setData] = useState<TodayData>();
@@ -73,7 +73,7 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
   if (!data) return <p className="text-slate-400">กำลังโหลด…</p>;
 
   const nowHM = new Date(Date.now() + 7 * 3600_000).toISOString().slice(11, 16);
-  const pastStart = nowHM > data.rules.workStart;
+  const pastStart = nowHM > data.rules.workStart && !data.dayOff; // วันหยุดไม่เตือนว่าใครยังไม่มา
   const working = data.rows.filter((r) => r.day?.open);
   const absent = data.rows.filter((r) => !r.day && !r.leave);
   const onLeave = data.rows.filter((r) => !r.day && r.leave);
@@ -82,14 +82,18 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
 
   const stats: [string, number, string, (() => void)?][] = [
     ["กำลังทำงาน", working.length, "bg-sky-600 text-white"],
-    ["ยังไม่เข้างาน", absent.length, pastStart && absent.length ? "bg-red-50 text-red-700" : "bg-white text-sky-900"],
+    [data.dayOff ? "หยุด (วันหยุด)" : "ยังไม่เข้างาน", absent.length, pastStart && absent.length ? "bg-red-50 text-red-700" : "bg-white text-sky-900"],
     ["มาสายวันนี้", late, late ? "bg-amber-50 text-amber-800" : "bg-white text-sky-900"],
     ["รอดำเนินการ", pending, pending ? "bg-sky-50 text-sky-800" : "bg-white text-sky-900", goPending],
   ];
 
   return (
     <section className="space-y-4">
-      <p className="text-sm text-slate-500">{dateLabel(data.date)} · อัปเดตอัตโนมัติทุก 1 นาที</p>
+      <p className="text-sm text-slate-500">
+        {dateLabel(data.date)}
+        {data.dayOff && <span className="badge ml-2 bg-slate-100 text-slate-600">วันหยุดประจำสัปดาห์</span>}
+        {" "}· อัปเดตอัตโนมัติทุก 1 นาที
+      </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {stats.map(([label, n, cls, onClick]) => (
           <button key={label} onClick={onClick} disabled={!onClick}
@@ -101,7 +105,8 @@ function Today({ pending, goPending }: { pending: number; goPending: () => void 
       </div>
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <Group title="กำลังทำงาน" rows={working} />
-        <Group title={pastStart ? `ยังไม่เข้างาน (เลย ${data.rules.workStart} แล้ว)` : "ยังไม่เข้างาน"} rows={absent} alert={pastStart && absent.length > 0} />
+        <Group title={data.dayOff ? "หยุด (วันหยุด)" : pastStart ? `ยังไม่เข้างาน (เลย ${data.rules.workStart} แล้ว)` : "ยังไม่เข้างาน"}
+          rows={absent} alert={pastStart && absent.length > 0} />
         <Group title="ลาวันนี้" rows={onLeave} />
         <Group title="เลิกงานแล้ว" rows={done} />
       </div>
